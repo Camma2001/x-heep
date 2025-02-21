@@ -636,15 +636,12 @@ module testharness #(
       );
 `endif
 
-      if ((core_v_mini_mcu_pkg::CpuType == cv32e40x || core_v_mini_mcu_pkg::CpuType == cv32e40px) && X_EXT != 0) begin: gen_fpu_ss_wrapper
-        fpu_ss_wrapper #(
-            .PULP_ZFINX(ZFINX),
+      if (core_v_mini_mcu_pkg::CpuType == cv32e40px && X_EXT != 0) begin: gen_quadrilatero_wrapper
+        quadrilatero_wrapper #(
+            .RES_IF_FIFO_DEPTH(4),
             .INPUT_BUFFER_DEPTH(1),
-            .OUT_OF_ORDER(0),
-            .FORWARDING(1),
-            .FPU_FEATURES(fpu_ss_pkg::FPU_FEATURES),
-            .FPU_IMPLEMENTATION(fpu_ss_pkg::FPU_IMPLEMENTATION)
-        ) fpu_ss_wrapper_i (
+            .MATRIX_FPU(1)
+        ) quadrilatero_wrapper_i (
             // Clock and reset
             .clk_i,
             .rst_ni,
@@ -655,7 +652,15 @@ module testharness #(
             .xif_commit_if(ext_if),
             .xif_mem_if(ext_if),
             .xif_mem_result_if(ext_if),
-            .xif_result_if(ext_if)
+            .xif_result_if(ext_if),
+            .quadrilatero_ch0_req_o     (ext_master_req [testharness_pkg::EXT_MASTER4_IDX]),
+            .quadrilatero_ch0_resp_i    (ext_master_resp[testharness_pkg::EXT_MASTER4_IDX]),
+            .quadrilatero_ch1_req_o     (ext_master_req [testharness_pkg::EXT_MASTER5_IDX]),
+            .quadrilatero_ch1_resp_i    (ext_master_resp[testharness_pkg::EXT_MASTER5_IDX]),
+            .quadrilatero_ch2_req_o     (ext_master_req [testharness_pkg::EXT_MASTER6_IDX]),
+            .quadrilatero_ch2_resp_i    (ext_master_resp[testharness_pkg::EXT_MASTER6_IDX]),
+            .quadrilatero_ch3_req_o     (ext_master_req [testharness_pkg::EXT_MASTER7_IDX]),
+            .quadrilatero_ch3_resp_i    (ext_master_resp[testharness_pkg::EXT_MASTER7_IDX])
         );
       end
 

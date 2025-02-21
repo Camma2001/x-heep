@@ -368,7 +368,7 @@ else()
     -DportasmHANDLE_INTERRUPT=vSystemIrqHandler\
   ")
 endif()
-set(CMAKE_C_FLAGS ${COMPILER_LINKER_FLAGS})
+set(CMAKE_C_FLAGS "${COMPILER_LINKER_FLAGS} -menable-experimental-extensions")
 set(CMAKE_CXX_FLAGS ${COMPILER_LINKER_FLAGS})
 
 
