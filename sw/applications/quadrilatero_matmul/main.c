@@ -12,6 +12,10 @@
 // Supported values: 16 (4x4), 64 (8x8).
 #define OUTPUT_TILE_SIZE 64
 
+/*Register Length*/
+// Supported values: 128 (4x4), 256 (8x8)
+#define RLEN 128
+
 /* By default, printfs are deactivated. */
 #define PRINTF_IN_FPGA  0
 #define PRINTF_IN_SIM   1
@@ -74,6 +78,7 @@
 DATA_OUT_t __attribute__((section(".xheep_data_interleaved"))) matrix_C[SIZE*SIZE]; 
 void __attribute__ ((noinline)) matrixMul_4x4(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift);
 void __attribute__ ((noinline)) matrixMul_8x8(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift);
+void __attribute__ ((noinline)) matrixMulBigRF_8x8(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift);
 void __attribute__ ((noinline)) matrixMul_CPU(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift);
 int float_condition(int index);
 int int_condition(int index);
@@ -333,6 +338,155 @@ void  __attribute__ ((noinline))  matrixMul_8x8(DATA_IN_t* addrA,DATA_IN_t* addr
     asm volatile("lw	s11, 0x00(sp)           "                            );   // 
     asm volatile("addi	sp, sp, 0x30            "                            );   //
 }
+
+// Output tile size: 8x8 only for RLEN = 256
+// Naive C code
+// for(int m = 0; m < M; m+= 8){
+//     for(int n = 0; n < N; n += 8){
+//         mzero m0;
+//         for (int k = 0; k < K; k+= 8){
+//             mld.w m1, (addrA + m*4*K + 4*k), 4*K; //load matrix A
+//             mld.w m2, (addrB + n*4*K + k*4), 4*N //load matrix B
+//             MACC(m0, m1, m2);
+//         }
+//         mst.w m0, (addrC + m*4*N + n*4), 4*N; //store matrix C
+//     }
+// }
+// more optimized C code using loop unrolling in the K loop
+// for(int m = 0; m < M; m+= 8){
+//     for(int n = 0; n < N; n += 8){
+//         mzero m0;
+//         for (int k = 0; k < K; k+= 16){
+//             mld.w m1, (addrA + m*4*K + 4*k), 4*K; //load matrix A
+//             mld.w m2, (addrB + n*4*K + k*4), 4*N; //load matrix B
+//             MACC(m0, m1, m2);
+//             mld.w m3, (addrA + m*4*K + 4*(k+8)), 4*K
+//             mld.w m4, (addrB + n*4*K + (k+8)*4), 4*N;
+//             MACC(m0, m3,m4);
+//         }
+//         mst.w m0, (addrC + m*4*N + n*4), 4*N; //store matrix C
+        
+//     }
+// }
+// even more optimized 
+// for(int m = 0; m < M; m+= 8){
+//  for(int n = 0; n < N; n += 8){
+//     asm volatile("mzero m0");
+//     asm volatile("mld.w m1, (addrA + m*4*K), 4*K"); //load matrix A
+//     asm volatile("mld.w m2, (addrB + n*4*K), 4*N"); //load matrix B
+//     asm volatile("MACC(m0, m1, m2)");
+//     for(int k = 8; k < K; k+= 24){
+//         asm volatile("mld.w m3, (addrA + m*4*K + 4*k), 4*K");
+//         asm volatile("mld.w m4, (addrB + n*4*K + k*4), 4*N");
+//         asm volatile("MACC(m0, m3,m4)");
+//         asm volatile("mld.w m5, (addrA + m*4*K + 4*(k+8)), 4*K");
+//         asm volatile("mld.w m6, (addrB + n*4*K + (k+8)*4), 4*N");
+//         asm volatile("MACC(m0, m5,m6)");
+//         asm volatile("mld.w m7, (addrA + m*4*K + 4*(k+16)), 4*K");
+//         asm volatile("mld.w m1, (addrB + n*4*K + (k+16)*4), 4*N");
+//         asm volatile("MACC(m0, m7,m1)");      
+//     }   
+//     asm volatile("mld.w m2, (addrA + m*4*K + 4*(K-8)), 4*K");
+//     asm volatile("mld.w m3, (addrB + n*4*K + (K-8)*4), 4*N");
+//     asm volatile("MACC(m0, m2,m3)");
+//     asm volatile("mst.w m0, (addrC + m*4*N + n*4), 4*N"); //store matrix C   
+//     }
+// }
+
+void  __attribute__ ((noinline))  matrixMulbigRF_8x8(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift)
+{
+    asm volatile("addi	sp, sp, -0x18           "                            );   // 
+    asm volatile("sw	s3 , 0x18(sp)           "                            );   // 
+    asm volatile("sw	s4 , 0x14(sp)           "                            );   // 
+    asm volatile("sw	s5 , 0x10(sp)           "                            );   // 
+    asm volatile("sw	s7 , 0x0c(sp)           "                            );   // 
+    asm volatile("sw	s9 , 0x08(sp)           "                            );   // 
+    asm volatile("sw	s10, 0x04(sp)           "                            );   // 
+    asm volatile("sw	s11, 0x00(sp)           "                            );   // 
+
+    //--------------------------------------------------------------------------------
+    asm volatile("addi    t5,x0, 0              "                            );   // t5  = m0 =0;
+    asm volatile("slli    s4,%0, 2              " :: "r" (N)                 );   // s4  = N*4;
+    asm volatile("sll     s7,%0,%1              " :: "r" (N),"r" (shift)     );   // s7  = N* 2**SIMD_SHIFT;
+    asm volatile("slli    s3,%0, 2              " :: "r" (K)                 );   // s3  = K*4;
+    asm volatile("loopM_start8x8big:               "                            );   // while(m0<M) {
+    asm volatile("mul     t1,s4,t5              "                            );   // t1  = N*4*m0;
+    asm volatile("addi    t4,x0, 0              "                            );   // t4  = n0 =0;
+    asm volatile("mul     t0,s3,t5              "                            );   // t0  = K*4*m0;
+    asm volatile("loopN_start8x8big:               "                            );   // while(n0<N) {
+    asm volatile("slli    s5,t4, 3              "                            );   // s5  = n0*8;
+    asm volatile("add     s11,%0,t1             " :: "r" (addrC)             );   // s11 = startAddrC = addrC + N*4*m0
+    asm volatile("add     s11,s11,s5            "                            );   // s11 = startAddrC += n0*4 
+    //set matrix C to zero
+    asm volatile("mzero   m0                    "                            );   // m0  = 0
+    //load matrix A
+    asm volatile("add     s9,%0,t0              " :: "r" (addrA)             );   // s9  = startAddrA = addrA + K*4*m0
+    asm volatile("mld.w   m1, (s9), s3          "                             );   // m1  = A[s9]  
+    asm volatile("mul     t2,s3,t4              "                            );   // t2  = K*4*n0;
+    //load matrix B
+    asm volatile("mul     t6,s3,t4              "                            );   // t6 = n0*4*K;
+    asm volatile("add     s10,%0,t6             " :: "r" (addrB)             );   // s10 = startAddrB = addrB + 4*n0*K
+    asm volatile("mld.w   m2, (s10), s4         "                            );   // m2  = B[s9] 
+    //begin k0 counter 
+    asm volatile("addi    t3,x0, 8              "                            );   // t3  = k0 =8;
+    //do first MACC
+    asm volatile(MACC(HEAD_LINE,0,1,2)                                       );   // m0 +=  m1 * m2
+
+    asm volatile("loopK_start8x8big:            "                            );   // while(k0<K) { 
+    asm volatile("slli    t6,t3, 2              "                            );   // t6  = k0*4;
+    //load A1
+    asm volatile("add     s9,s9,t6              "                            );   // s9  = startAddrA += k0*4
+    asm volatile("mld.w   m3, (s9) , s3         "                            );   // m3  = A[s9] 
+    //load B1
+    asm volatile("add     s10,s10,t6            "                            );   // s10 = startAddrB += k0*4;  
+    asm volatile("mld.w   m4, (s10), s4         "                            );   // m4  = B[s10]  
+    asm volatile(MACC(HEAD_LINE,0,3,4)                                       );   // m0 +=  m3 * m4
+    //load A2
+    asm volatile("add     s9,s9,t6              "                            );   // s9  = startAddrA += k0*4
+    asm volatile("mld.w   m5, (s9) , s3         "                            );   // m5  = A[s9] 
+    //load B2
+    asm volatile("add     s10,s10,t6            "                            );   // s10 = startAddrB += k0*4;  
+    asm volatile("mld.w   m6, (s10), s4         "                            );   // m6  = B[s10]  
+    asm volatile(MACC(HEAD_LINE,0,5,6)                                       );   // m0 +=  m5 * m6
+    //load A3
+    asm volatile("add     s9,s9,t6              "                            );   // s9  = startAddrA += k0*4
+    asm volatile("mld.w   m7, (s9) , s3         "                            );   // m7  = A[s9] 
+    //load B3
+    asm volatile("add     s10,s10,t6            "                            );   // s10 = startAddrB += k0*4;  
+    asm volatile("mld.w   m1, (s10), s4         "                            );   // m1  = B[s10]  
+    asm volatile(MACC(HEAD_LINE,0,7,1)                                       );   // m0 +=  m7 * m1
+
+   
+    asm volatile("addi    t3,t3, 24              "                            );   // k0+=24;
+    asm volatile("blt     t3, %0, loopK_start8x8big" :: "r" (K)                 );   // endwhile(k0<K)
+    //asm volatile("addi    t6,s3, -32              "                            );   // t6 = (K-8) * 4
+    //load last A
+    asm volatile("add    s9,s9, 32              "                            );   // s9 = startAddrA + (K-8) * 4 not sure about that, might be wrong
+    asm volatile("mld.w   m2, (s9) , s3         "                            );   // m2  = A[s9] 
+    //load last B
+    asm volatile("add     s10,s10,32           "                            );   // s10 = startAddrB + (K-8) * 4;  
+    asm volatile("mld.w   m3, (s10), s4         "                            );   // m3  = B[s10]  
+    asm volatile(MACC(HEAD_LINE,0,2,3)                                       );   // m0 +=  m2 * m3
+
+    asm volatile("addi    t4,t4, 8              "                            );   // n0+=8;
+    //store matrix C
+    asm volatile("mst.w   m0, (s11), s4         "                            );   // m0 -> (s11)
+    asm volatile("blt     t4, %0, loopN_start8x8big" :: "r" (N)                 );   // endwhile(n0<N)
+    asm volatile("addi    t5,t5, 8              "                            );   // m0+=8;
+    asm volatile("blt     t5, %0, loopM_start8x8big" :: "r" (M)                 );   // endwhile(m0<M)
+    //--------------------------------------------------------------------------------
+
+    asm volatile("lw	s3 , 0x18(sp)           "                            );   // 
+    asm volatile("lw	s4 , 0x14(sp)           "                            );   // 
+    asm volatile("lw	s5 , 0x10(sp)           "                            );   // 
+    asm volatile("lw	s7 , 0x0c(sp)           "                            );   // 
+    asm volatile("lw	s9 , 0x08(sp)           "                            );   // 
+    asm volatile("lw	s10, 0x04(sp)           "                            );   // 
+    asm volatile("lw	s11, 0x00(sp)           "                            );   // 
+    asm volatile("addi	sp, sp, 0x18            "                            );   //
+}
+
+
 
 
 
