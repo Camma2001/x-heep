@@ -639,7 +639,7 @@ module testharness #(
       if (core_v_mini_mcu_pkg::CpuType == cv32e40px && X_EXT != 0) begin: gen_quadrilatero_wrapper
         quadrilatero_wrapper #(
             .RES_IF_FIFO_DEPTH(4),
-            .INPUT_BUFFER_DEPTH(1),
+            .INPUT_BUFFER_DEPTH(4),
             .MATRIX_FPU(1)
         ) quadrilatero_wrapper_i (
             // Clock and reset
