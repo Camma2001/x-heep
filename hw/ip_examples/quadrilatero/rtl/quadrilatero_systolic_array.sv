@@ -18,7 +18,7 @@ module quadrilatero_systolic_array #(
     parameter  int N_REGS      = 8,
     parameter  int ENABLE_SIMD = 1,
     localparam int N_ROWS      = MESH_WIDTH,
-    localparam int RLEN        = DATA_WIDTH * MESH_WIDTH,
+    localparam int ALEN        = DATA_WIDTH * MESH_WIDTH,
     parameter      FPU         = 1
 ) (
     input logic clk_i,
@@ -38,7 +38,7 @@ module quadrilatero_systolic_array #(
     // Weight Read Register Port
     output logic [$clog2(N_REGS)-1:0] weight_raddr_o,
     output logic [$clog2(N_ROWS)-1:0] weight_rrowaddr_o,
-    input  logic [          RLEN-1:0] weight_rdata_i,
+    input  logic [          ALEN-1:0] weight_rdata_i,
     input  logic                      weight_rdata_valid_i,
     output logic                      weight_rdata_ready_o,
     output logic                      weight_rlast_o,
@@ -46,7 +46,7 @@ module quadrilatero_systolic_array #(
     // Data Read Register Port
     output logic [$clog2(N_REGS)-1:0] data_raddr_o,
     output logic [$clog2(N_ROWS)-1:0] data_rrowaddr_o,
-    input  logic [          RLEN-1:0] data_rdata_i,
+    input  logic [          ALEN-1:0] data_rdata_i,
     input  logic                      data_rdata_valid_i,
     output logic                      data_rdata_ready_o,
     output logic                      data_rlast_o,
@@ -54,7 +54,7 @@ module quadrilatero_systolic_array #(
     // Accumulator Read Register Port
     output logic [$clog2(N_REGS)-1:0] acc_raddr_o,
     output logic [$clog2(N_ROWS)-1:0] acc_rrowaddr_o,
-    input  logic [          RLEN-1:0] acc_rdata_i,
+    input  logic [          ALEN-1:0] acc_rdata_i,
     input  logic                      acc_rdata_valid_i,
     output logic                      acc_rdata_ready_o,
     output logic                      acc_rlast_o,
@@ -62,7 +62,7 @@ module quadrilatero_systolic_array #(
     // Accumulator Out Write Register Port
     output logic [$clog2(N_REGS)-1:0] res_waddr_o,
     output logic [$clog2(N_ROWS)-1:0] res_wrowaddr_o,
-    output logic [          RLEN-1:0] res_wdata_o,
+    output logic [          ALEN-1:0] res_wdata_o,
     output logic                      res_we_o,
     output logic                      res_wlast_o,
     input  logic                      res_wready_i,

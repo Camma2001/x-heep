@@ -13,7 +13,7 @@ module quadrilatero_register_lsu #(
     parameter int unsigned BUS_WIDTH = 128,
     parameter int unsigned N_REGS = 8,
     parameter int unsigned N_ROWS = 4,
-    localparam int unsigned RLEN = BUS_WIDTH
+    localparam int unsigned LLEN = BUS_WIDTH
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -33,7 +33,7 @@ module quadrilatero_register_lsu #(
     // Register Write Port for load unit
     output logic [$clog2(N_REGS)-1:0] waddr_o,
     output logic [$clog2(N_ROWS)-1:0] wrowaddr_o,
-    output logic [          RLEN-1:0] wdata_o,
+    output logic [          LLEN-1:0] wdata_o,
     output logic                      we_o,
     output logic                      wlast_o,
     input  logic                      wready_i,    // to stall the request in case the port is busy
@@ -41,7 +41,7 @@ module quadrilatero_register_lsu #(
     // Register Read Port for store unit
     output logic [$clog2(N_REGS)-1:0] raddr_o,
     output logic [$clog2(N_ROWS)-1:0] rrowaddr_o,
-    input  logic [          RLEN-1:0] rdata_i,
+    input  logic [          LLEN-1:0] rdata_i,
     input  logic                      rdata_valid_i,
     output logic                      rdata_ready_o,
     output logic                      rlast_o,
@@ -64,7 +64,7 @@ module quadrilatero_register_lsu #(
 
 );
 
-  localparam MAX_EL_PER_ROW = RLEN / BUS_WIDTH;
+  localparam MAX_EL_PER_ROW = LLEN / BUS_WIDTH;
 
   logic                           finished;
   logic [xif_pkg::X_ID_WIDTH-1:0] back_id_q;
@@ -75,7 +75,7 @@ module quadrilatero_register_lsu #(
   logic [     $clog2(N_REGS)-1:0] waddr_q;
   logic [     $clog2(N_REGS)-1:0] waddr_d;
 
-  logic [               RLEN-1:0] load_fifo_data;
+  logic [               LLEN-1:0] load_fifo_data;
 
   logic                           load_fifo_data_available;
   logic                           load_fifo_pop;
@@ -83,9 +83,9 @@ module quadrilatero_register_lsu #(
   logic                           store_fifo_space_available;
   logic                           store_fifo_push;
   logic                           store_fifo_empty;
-  logic [               RLEN-1:0] store_fifo_data;
+  logic [               LLEN-1:0] store_fifo_data;
 
-  logic [               RLEN-1:0] data_mask;
+  logic [               LLEN-1:0] data_mask;
   logic                           load_fifo_valid;
   logic                           busy;
   logic                           start;
