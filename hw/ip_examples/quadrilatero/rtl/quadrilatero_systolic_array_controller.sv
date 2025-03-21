@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
 //
 // Author: Saverio Nasturzio
-// Author: Davide Schiavone
 
 module quadrilatero_systolic_array_controller #(
     parameter N_SLOTS = 3,
@@ -21,22 +20,20 @@ module quadrilatero_systolic_array_controller #(
     output logic start_o,  // WL will start executing new instruction
     output quadrilatero_pkg::sa_instr_t issued_instr_o  // issued instruction
 );
-
   localparam int unsigned USAGE_DEPTH = (N_SLOTS > 1) ? $clog2(N_SLOTS) : 1;
   logic issue_queue_empty;
-  logic [USAGE_DEPTH-1:0] issue_queue_inst_usage;
-  logic pop_instr;
   logic issue_queue_full;
   logic issue_queue_almost_full;
-
+  logic pop_instr;
+  logic [USAGE_DEPTH-1:0] issue_queue_inst_usage;
   assign pop_instr = wl_ready_i & !issue_queue_empty;
-  assign start_o = pop_instr;
 
-  /* verilator lint_off WIDTH */
+  assign start_o   = pop_instr;
+
+
   assign issue_queue_almost_full = issue_queue_inst_usage == (N_SLOTS[USAGE_DEPTH:0] - 1);
-
   assign issue_queue_full_o = issue_queue_almost_full | issue_queue_full;
-
+  
   fifo_v3 #(
       .FALL_THROUGH(0),
       .DATA_WIDTH  (DATA_WIDTH),

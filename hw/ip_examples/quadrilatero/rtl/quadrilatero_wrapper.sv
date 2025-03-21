@@ -54,8 +54,8 @@ module quadrilatero_wrapper
   // Matrix coprocessor
   quadrilatero #(
       .INPUT_BUFFER_DEPTH(INPUT_BUFFER_DEPTH),  // 0 means no input buffer 
-      .RES_IF_FIFO_DEPTH (RES_IF_FIFO_DEPTH),
-      .FPU               (MATRIX_FPU)
+      .RES_IF_FIFO_DEPTH (RES_IF_FIFO_DEPTH ),
+      .FPU               (MATRIX_FPU        )
   ) mat_inst (
       .clk_i,
       .rst_ni,

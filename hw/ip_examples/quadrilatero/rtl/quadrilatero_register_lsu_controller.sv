@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH SHL-2.1
 //
 // Author: Saverio Nasturzio
-// Author: Davide Schiavone
 
 module quadrilatero_register_lsu_controller #(
     parameter N_SLOTS = 3
@@ -23,22 +22,16 @@ module quadrilatero_register_lsu_controller #(
     output quadrilatero_pkg::lsu_conf_t issued_instr_conf_o  // issued instruction configuration
 );
 
-  localparam int unsigned USAGE_DEPTH = (N_SLOTS > 1) ? $clog2(N_SLOTS) : 1;
-
+  localparam int unsigned USAGE = N_SLOTS > 1 : $clog2(N_SLOTS) : 0;
   logic issue_queue_empty;
   logic start_load;
-
-  logic [USAGE_DEPTH-1:0] issue_queue_inst_usage;
-  logic issue_queue_full;
   logic issue_queue_almost_full;
-
-  /* verilator lint_off WIDTH */
-  assign issue_queue_almost_full = issue_queue_inst_usage == (N_SLOTS[USAGE_DEPTH:0] - 1);
-  assign issue_queue_full_o = issue_queue_almost_full | issue_queue_full;
+  logic issue_queue_full;
+  logic[USAGE:0] issue_queue_usage;
 
   quadrilatero_pkg::lsu_instr_t issued_instr_ff;  // issued instruction
   quadrilatero_pkg::lsu_instr_t fifo_data_out;
-  quadrilatero_pkg::lsu_conf_t  issued_instr_conf_ff;  // issued instruction configuration
+  quadrilatero_pkg::lsu_conf_t issued_instr_conf_ff;  // issued instruction configuration
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -64,6 +57,9 @@ module quadrilatero_register_lsu_controller #(
 
   assign start_load = pop_instr;
 
+  assign issue_queue_almost_full = (issue_queue_usage == N_SLOTS-1);
+  assign issue_queue_full_o = issue_queue_full | issue_queue_almost_full;
+
   fifo_v3 #(
       .FALL_THROUGH(0),
       .DATA_WIDTH  (32),
@@ -76,7 +72,7 @@ module quadrilatero_register_lsu_controller #(
       .flush_i   (1'b0),
       .testmode_i(1'b0),
 
-      .usage_o(issue_queue_inst_usage),
+      .usage_o(issue_queue_usage),
       .full_o (issue_queue_full),
       .empty_o(issue_queue_empty),
 
