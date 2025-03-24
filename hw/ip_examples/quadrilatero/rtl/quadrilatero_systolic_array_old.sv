@@ -75,43 +75,24 @@ module quadrilatero_systolic_array #(
     input  logic                           finished_ack_i      ,
     output logic [xif_pkg::X_ID_WIDTH-1:0] finished_instr_id_o
 );
-  typedef enum logic [1:0]{
-    FS_IDLE,
-    FS_ACTIVE,
-    FS_LAST
-  } fs_state_e;
-  typedef enum logic [1:0]{
-    FF_IDLE,
-    FF_ACTIVE,
-    FF_DONE
-  } ff_state_e;
-  typedef enum logic [1:0]{
-    DR_IDLE,
-    DR_ACTIVE,
-    DR_DONE
-  } dr_state_e;
 
-  ff_state_e ff_state_d, ff_state_q;
-  fs_state_e fs_state_d, fs_state_q;
-  dr_state_e dr_state_d, dr_state_q;
-  localparam LastRow = $clog2(MESH_WIDTH)'(MESH_WIDTH-1);
-  // logic                           ff_active_d        ;
-  // logic                           ff_active_q        ;
-  // logic                           fs_active_d        ;
-  // logic                           fs_active_q        ;
-  // logic                           dr_active_d        ;
-  // logic                           dr_active_q        ;
-  // logic                           set_ff_active      ;
-  // logic                           rst_ff_active      ;
-  // logic                           set_fs_active      ;
-  // logic                           rst_fs_active      ;
-  // logic                           set_dr_active      ;
-  // logic                           rst_dr_active      ;
+  logic                           ff_active_d        ;
+  logic                           ff_active_q        ;
+  logic                           fs_active_d        ;
+  logic                           fs_active_q        ;
+  logic                           dr_active_d        ;
+  logic                           dr_active_q        ;
+  logic                           set_ff_active      ;
+  logic                           rst_ff_active      ;
+  logic                           set_fs_active      ;
+  logic                           rst_fs_active      ;
+  logic                           set_dr_active      ;
+  logic                           rst_dr_active      ;
   logic                           valid              ;
   logic                           clear              ;
-  // logic                           ff_enable          ;
-  // logic                           fs_enable          ;
-  // logic                           dr_enable          ;
+  logic                           ff_enable          ;
+  logic                           fs_enable          ;
+  logic                           dr_enable          ;
   logic                           pump               ;
   logic [$clog2(MESH_WIDTH)-1 :0] ff_counter_d       ;
   logic [$clog2(MESH_WIDTH)-1 :0] ff_counter_q       ;
@@ -160,42 +141,42 @@ module quadrilatero_systolic_array #(
     // Weight Read Register Port
     weight_raddr_o       = weight_reg_q              ;
     weight_rrowaddr_o    = ff_counter_q              ;
-    weight_rdata_ready_o = (ff_state_q != FF_IDLE) &~ mask_req   ; 
-    weight_rlast_o       = ff_counter_q==LastRow;
+    weight_rdata_ready_o = ff_active_q &~ mask_req   ;
+    weight_rlast_o       = ff_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1);
 
     // Data Read Register Port
     data_raddr_o         = data_reg_q                ;
     data_rrowaddr_o      = ff_counter_q              ;
-    data_rdata_ready_o   = (ff_state_q != FF_IDLE)  &~ mask_req  ;
-    data_rlast_o         = ff_counter_q==LastRow;
+    data_rdata_ready_o   = ff_active_q  &~ mask_req  ;
+    data_rlast_o         = ff_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1);
 
     // Accumulator Read Register Port
     acc_raddr_o          = acc_reg_q                 ;
     acc_rrowaddr_o       = ff_counter_q              ;
-    acc_rdata_ready_o    = (ff_state_q != FF_IDLE) &~ mask_req   ;
-    acc_rlast_o          = ff_counter_q==LastRow;
+    acc_rdata_ready_o    = ff_active_q &~ mask_req   ;
+    acc_rlast_o          = ff_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1);
 
     // Accumulator Out Write Register Port
     res_waddr_o         = dest_reg_q                ;
     res_wrowaddr_o      = dr_counter_q              ;
-    res_we_o            = (dr_state_q == DR_ACTIVE)  &~ mask_req  ;
-    res_wlast_o         = dr_counter_q==LastRow;
+    res_we_o            = dr_active_q  &~ mask_req  ;
+    res_wlast_o         = dr_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1);
   end
 
   always_comb begin: next_value
 
     // Configuration
-    //data_reg_d    = (set_ff_active) ? data_reg_i    : data_reg_q   ;
-    //acc_reg_d     = (set_ff_active) ? acc_reg_i     : acc_reg_q    ;
-    //weight_reg_d  = (set_ff_active) ? weight_reg_i  : weight_reg_q ;
-    //sa_ctrl_d     = (set_ff_active) ? sa_ctrl_i     : sa_ctrl_q    ;
+    data_reg_d    = (set_ff_active) ? data_reg_i    : data_reg_q   ;
+    acc_reg_d     = (set_ff_active) ? acc_reg_i     : acc_reg_q    ;
+    weight_reg_d  = (set_ff_active) ? weight_reg_i  : weight_reg_q ;
+    sa_ctrl_d     = (set_ff_active) ? sa_ctrl_i     : sa_ctrl_q    ;
 
-    //acc_fs_d      = (set_fs_active) ? acc_reg_q     : acc_fs_q     ;
-    //dest_reg_d    = (set_dr_active) ? acc_fs_q      : dest_reg_q   ;
+    acc_fs_d      = (set_fs_active) ? acc_reg_q     : acc_fs_q     ;
+    dest_reg_d    = (set_dr_active) ? acc_fs_q      : dest_reg_q   ;
 
-    //id_ff_d       = (set_ff_active) ? id_i          : id_ff_q      ;
-    //id_fs_d       = (set_fs_active) ? id_ff_q       : id_fs_q      ;
-    //id_dr_d       = (set_dr_active) ? id_fs_q       : id_dr_q      ;
+    id_ff_d       = (set_ff_active) ? id_i          : id_ff_q      ;
+    id_fs_d       = (set_fs_active) ? id_ff_q       : id_fs_q      ;
+    id_dr_d       = (set_dr_active) ? id_fs_q       : id_dr_q      ;
 
     // Finished
     finished_d          = (res_wready_i && res_wlast_o) ? 1'b1 :
@@ -205,236 +186,48 @@ module quadrilatero_systolic_array #(
                           (finished_ack_i             ) ? '0      : finished_instr_id_q; 
 
     // Counters
-    //ff_counter_d = (ff_enable && ff_counter_q==LastRow) ? '0               :
-    //               (ff_enable                              ) ? ff_counter_q + 1 : ff_counter_q;
+    ff_counter_d = (ff_enable && ff_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1)) ? '0               :
+                   (ff_enable                              ) ? ff_counter_q + 1 : ff_counter_q;
                    
-    //fs_counter_d = (clear                                  ) ||
-    //               (fs_enable && fs_counter_q==LastRow)    ? '0               :
-    //               (fs_enable                              )    ? fs_counter_q + 1 : fs_counter_q;
+    fs_counter_d = (clear                                  ) ||
+                   (fs_enable && fs_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1))    ? '0               :
+                   (fs_enable                              )    ? fs_counter_q + 1 : fs_counter_q;
 
-    //dr_counter_d = (clear                                  ) ||
-    //               (dr_enable && dr_counter_q==LastRow)    ? '0               :
-    //               (dr_enable                              )    ? dr_counter_q + 1 : dr_counter_q;
+    dr_counter_d = (clear                                  ) ||
+                   (dr_enable && dr_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1))    ? '0               :
+                   (dr_enable                              )    ? dr_counter_q + 1 : dr_counter_q;
 
     // Active signals
-    //ff_active_d = set_ff_active ? 1'b1 :
-    //              rst_ff_active ? 1'b0 : ff_active_q;
+    ff_active_d = set_ff_active ? 1'b1 :
+                  rst_ff_active ? 1'b0 : ff_active_q;
 
-    //fs_active_d = set_fs_active ? 1'b1 :
-    //              rst_fs_active ? 1'b0 : fs_active_q;
+    fs_active_d = set_fs_active ? 1'b1 :
+                  rst_fs_active ? 1'b0 : fs_active_q;
 
-    //dr_active_d = set_dr_active ? 1'b1 :
-    //              rst_dr_active ? 1'b0 : dr_active_q;
+    dr_active_d = set_dr_active ? 1'b1 :
+                  rst_dr_active ? 1'b0 : dr_active_q;
   end
 
   always_comb begin: ctrl_block
     valid = weight_rdata_valid_i & data_rdata_valid_i & acc_rdata_valid_i;
-    //clear = ~ff_active_q & ~fs_active_q & ~dr_active_q;
-    if((ff_state_q == FF_IDLE) && (fs_state_q != FS_ACTIVE) && (dr_state_q != DR_ACTIVE)) begin
-      clear = 1'b1;
-    end else begin
-      clear = 1'b0;
-    end
+    clear = ~ff_active_q & ~fs_active_q & ~dr_active_q;
 
-    //ff_enable = ff_active_q &  valid                ;
+    ff_enable = ff_active_q &  valid                ;
     // fs_enable = fs_active_q & (valid | ~ff_active_q);
     // dr_enable = dr_active_q & (valid | ~ff_active_q);
-    //fs_enable = fs_active_q;
-    //dr_enable = dr_active_q;
+    fs_enable = fs_active_q;
+    dr_enable = dr_active_q;
 
-    //set_ff_active = ff_counter_d=='0 & start_i                                                                                          ;
-    //set_fs_active = fs_counter_d=='0 & ff_counter_d=='0                                & ff_counter_q==LastRow;
-    //set_dr_active = dr_counter_d=='0 & fs_counter_d==LastRow & fs_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-2);
+    set_ff_active = ff_counter_d=='0 & start_i                                                                                          ;
+    set_fs_active = fs_counter_d=='0 & ff_counter_d=='0                                & ff_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1);
+    set_dr_active = dr_counter_d=='0 & fs_counter_d==$clog2(MESH_WIDTH)'(MESH_WIDTH-1) & fs_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-2);
 
-    //rst_ff_active = ff_counter_q==LastRow & ff_counter_d=='0                                      ;
-    //rst_fs_active = fs_counter_q==LastRow & fs_counter_d=='0 & ff_counter_d=='0 & ff_counter_q=='0;
-    //rst_dr_active = dr_counter_q==LastRow & dr_counter_d=='0 & fs_counter_d=='0 & fs_counter_q=='0;
+    rst_ff_active = ff_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1) & ff_counter_d=='0                                      ;
+    rst_fs_active = fs_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1) & fs_counter_d=='0 & ff_counter_d=='0 & ff_counter_q=='0;
+    rst_dr_active = dr_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1) & dr_counter_d=='0 & fs_counter_d=='0 & fs_counter_q=='0;
 
-    if((ff_state_q != FF_IDLE && valid == 1'b1) || (fs_state_q == FS_ACTIVE) || (dr_state_q == DR_ACTIVE)) begin
-      pump = 1'b1;
-    end else begin
-      pump = 1'b0;
-    end
-    mask_req = (dr_counter_q==LastRow) & finished_q & ~finished_ack_i;
-  end
-
-  always_comb begin : ff_fsm_block
-  ff_counter_d = ff_counter_q;
-  ff_state_d = ff_state_q;
-  //Configuration
-  data_reg_d = data_reg_q;
-  acc_reg_d = acc_reg_q;
-  weight_reg_d = weight_reg_q;
-  sa_ctrl_d = sa_ctrl_q;
-  id_ff_d = id_ff_q;
-
-  unique case (ff_state_q)
-    FF_IDLE: begin
-      ff_counter_d = '0;
-      if(start_i == 1'b1) begin
-        ff_state_d = FF_ACTIVE;
-        //ff_counter_d = '1; // mayday
-        data_reg_d = data_reg_i;
-        acc_reg_d = acc_reg_i;
-        weight_reg_d = weight_reg_i;
-        sa_ctrl_d = sa_ctrl_i;
-        id_ff_d = id_i;
-      end 
-    end
-    FF_ACTIVE: begin
-      if(valid == 1'b1) begin
-        if(ff_counter_q==(LastRow-1)) begin
-          ff_counter_d = ff_counter_q + 1;
-          ff_state_d = FF_DONE;
-        end else begin
-          ff_counter_d = ff_counter_q + 1;
-        end
-      end 
-      
-          
-    end
-    FF_DONE: begin
-      if(start_i == 1'b1) begin
-        ff_counter_d = '0;
-        ff_state_d = FF_ACTIVE;
-
-        data_reg_d = data_reg_i;
-        acc_reg_d = acc_reg_i;
-        weight_reg_d = weight_reg_i;
-        sa_ctrl_d = sa_ctrl_i;
-        id_ff_d = id_i;
-      end else begin
-        ff_counter_d = '0;
-        ff_state_d = FF_IDLE;  
-      end
-  
-    end
-    default: begin
-      ff_state_d = FF_IDLE; 
-    end
-  endcase
-  end
-  always_comb begin : fs_fsm_block
-    fs_counter_d = fs_counter_q;
-    fs_state_d = fs_state_q;
-
-    acc_fs_d = acc_fs_q;
-    id_fs_d = id_fs_q;
-
-    unique case(fs_state_q) 
-      FS_IDLE: begin
-        fs_counter_d = '0;
-        if(ff_state_q == FF_DONE ) begin //&& fs_counter_d == '0 was in if clause.
-          fs_state_d = FS_ACTIVE;
-          //fs_counter_d = fs_counter_q + 1;
-
-          acc_fs_d = acc_reg_q;
-          id_fs_d = id_ff_q;
-        end
-        
-      end
-      FS_ACTIVE: begin
-        if(clear == 1'b1) begin
-          fs_counter_d = '0;
-          fs_state_d = FS_IDLE;
-        end else begin
-          if(fs_counter_q == LastRow-2) begin
-            fs_counter_d = fs_counter_q + 1;
-            fs_state_d = FS_LAST;
-          end else begin
-            fs_counter_d = fs_counter_q + 1;
-          end
-          //   fs_counter_d = '0;
-          //   if(ff_state_q == FF_DONE) begin //stay in active mode, load new inputs
-          //     fs_state_d = FS_ACTIVE;
-
-          //     acc_fs_d = acc_reg_q;
-          //     id_fs_d = id_ff_q;
-          //   end
-          //   if(ff_state_q == FF_IDLE) begin
-          //     fs_state_d = FS_DONE;
-          //   end
-          // end else begin
-          //   fs_counter_d = fs_counter_q + 1;  
-          // end
-        end
-      end
-      FS_LAST: begin
-        fs_counter_d = '0;
-          if(ff_state_q == FF_DONE) begin //stay in active mode, load new inputs
-            fs_state_d = FS_ACTIVE;
-
-            acc_fs_d = acc_reg_q;
-            id_fs_d = id_ff_q;
-          end
-          if(ff_state_q == FF_IDLE) begin
-            fs_state_d = FS_IDLE;
-          end
-        
-      end
-      default: begin
-        fs_state_d = FS_IDLE;
-      end
-
-    endcase
-  end
-
-  always_comb begin : dr_fsm_block
-    dr_state_d = dr_state_q;
-    dr_counter_d = dr_counter_q;
-
-    dest_reg_d = dest_reg_q;
-    id_dr_d = id_dr_q;
-    unique case(dr_state_q) 
-      DR_IDLE: begin
-        dr_counter_d = '0;
-        if(fs_state_q == FS_LAST) begin //fs_counter_d == LastRow ) && (fs_counter_q == LastRow - 1
-          dr_state_d = DR_ACTIVE;
-          //dr_counter_d = dr_counter_q + 1;
-          dest_reg_d = acc_fs_q;
-          id_dr_d = id_fs_q;
-        end
-        
-      end
-      DR_ACTIVE: begin
-        if(clear == 1'b1) begin
-          dr_counter_d = '0;
-          dr_state_d = DR_IDLE;
-        end else begin
-          if(dr_counter_q == LastRow) begin
-            if(res_wready_i == 1'b0) begin
-              dr_state_d = dr_state_q; //stall the pipeline
-            end else begin
-              dr_counter_d = '0;
-              if(fs_state_q == FS_LAST) begin //stay in the active mode, load new inputs (fs_counter_d == LastRow - 1 ) && (fs_counter_q == LastRow - 2)
-                dr_state_d = DR_ACTIVE;
-                dest_reg_d = acc_fs_q;
-                id_dr_d = id_fs_q;
-              end
-              if(fs_state_q == FS_IDLE) begin
-                dr_state_d = DR_DONE;
-              end 
-              end //else begin
-              //   dr_state_d = DR_ACTIVE;
-              //   dest_reg_d = acc_fs_q;
-              //   id_dr_d = id_fs_q;
-              // end
-              end else begin
-            dr_counter_d = dr_counter_q + 1;
-          end
-        end
-        
-      end
-      DR_DONE: begin //theoretically we don't need this state.
-        dr_state_d = DR_IDLE;
-      end
-      default: begin
-        dr_state_d = DR_IDLE;
-      end
-      
-    endcase
-    
-
+    pump     = ff_enable | fs_enable | dr_enable                              ;
+    mask_req = (dr_counter_q==$clog2(MESH_WIDTH)'(MESH_WIDTH-1)) & finished_q & ~finished_ack_i;
   end
 
   quadrilatero_skewer #(
@@ -520,12 +313,9 @@ module quadrilatero_systolic_array #(
       ff_counter_q        <= '0;
       fs_counter_q        <= '0;
       dr_counter_q        <= '0;
-      // ff_active_q         <= '0;
-      // fs_active_q         <= '0;
-      // dr_active_q         <= '0;
-      ff_state_q          <= FF_IDLE;
-      fs_state_q          <= FS_IDLE;
-      dr_state_q          <= DR_IDLE;
+      ff_active_q         <= '0;
+      fs_active_q         <= '0;
+      dr_active_q         <= '0;
       data_reg_q          <= '0;
       acc_reg_q           <= '0;
       weight_reg_q        <= '0;
@@ -541,12 +331,9 @@ module quadrilatero_systolic_array #(
       ff_counter_q        <= ff_counter_d        ;
       fs_counter_q        <= fs_counter_d        ;
       dr_counter_q        <= dr_counter_d        ;
-      // ff_active_q         <= ff_active_d         ;
-      // fs_active_q         <= fs_active_d         ;
-      // dr_active_q         <= dr_active_d         ;
-      ff_state_q          <= ff_state_d;
-      fs_state_q          <= fs_state_d;
-      dr_state_q          <= dr_state_d;
+      ff_active_q         <= ff_active_d         ;
+      fs_active_q         <= fs_active_d         ;
+      dr_active_q         <= dr_active_d         ;
       data_reg_q          <= data_reg_d          ;
       acc_reg_q           <= acc_reg_d           ;
       weight_reg_q        <= weight_reg_d        ;
@@ -561,7 +348,7 @@ module quadrilatero_systolic_array #(
     end
   end
  
-  assign sa_ready_o          = (ff_counter_d=='0) & (((ff_state_q != FF_IDLE) &~ ff_counter_q=='0) | clear);
+  assign sa_ready_o          = (ff_counter_d=='0) & ((ff_active_q &~ ff_counter_q=='0) | (~ff_active_q & ~fs_active_q & ~dr_active_q));
   assign sa_input_id_o       = id_ff_q            ;
   assign sa_output_id_o      = id_dr_q            ;
   assign finished_o          = finished_q         ;

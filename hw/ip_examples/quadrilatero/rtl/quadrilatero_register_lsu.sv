@@ -13,7 +13,7 @@ module quadrilatero_register_lsu #(
     parameter int unsigned  BUS_WIDTH = 128,
     parameter int unsigned  N_REGS = 8,
     parameter int unsigned  N_ROWS = 4,
-    localparam int unsigned RLEN = BUS_WIDTH
+    localparam int unsigned LLEN = BUS_WIDTH
 ) (
     input  logic                          clk_i               ,
     input  logic                          rst_ni              ,
@@ -33,7 +33,7 @@ module quadrilatero_register_lsu #(
     // Register Write Port for load unit
     output logic [    $clog2(N_REGS)-1:0] waddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] wrowaddr_o          ,
-    output logic [              RLEN-1:0] wdata_o             ,
+    output logic [              LLEN-1:0] wdata_o             ,
     output logic                          we_o                ,
     output logic                          wlast_o             ,
     input  logic                          wready_i            ,  // to stall the request in case the port is busy
@@ -41,7 +41,7 @@ module quadrilatero_register_lsu #(
     // Register Read Port for store unit
     output logic [    $clog2(N_REGS)-1:0] raddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] rrowaddr_o          ,
-    input  logic [              RLEN-1:0] rdata_i             ,
+    input  logic [              LLEN-1:0] rdata_i             ,
     input  logic                          rdata_valid_i       ,
     output logic                          rdata_ready_o       ,
     output logic                          rlast_o             ,
@@ -66,6 +66,14 @@ module quadrilatero_register_lsu #(
 
   localparam MAX_EL_PER_ROW = LLEN / BUS_WIDTH;
 
+  //   typedef enum logic {
+  //   IDLE,
+  //   COUNTING_ROWS,
+  //   LAST_ROW
+  //   } register_lsu_state_e;
+
+  // register_lsu_state_e state_d, state_q;
+
   logic finished;
   logic [xif_pkg::X_ID_WIDTH-1:0] back_id_q;
   logic [xif_pkg::X_ID_WIDTH-1:0] back_id_d;
@@ -75,7 +83,7 @@ module quadrilatero_register_lsu #(
   logic [$clog2(N_REGS)-1:0] waddr_q;
   logic [$clog2(N_REGS)-1:0] waddr_d;
 
-  logic [RLEN-1:0] load_fifo_data;
+  logic [LLEN-1:0] load_fifo_data;
 
   logic load_fifo_data_available;
   logic load_fifo_pop;
@@ -83,9 +91,9 @@ module quadrilatero_register_lsu #(
   logic store_fifo_space_available;
   logic store_fifo_push;
   logic store_fifo_empty;
-  logic [RLEN-1:0] store_fifo_data;
+  logic [LLEN-1:0] store_fifo_data;
 
-  logic [RLEN-1:0] data_mask;
+  logic [LLEN-1:0] data_mask;
   logic load_fifo_valid;
   logic busy;
   logic start;
@@ -167,7 +175,7 @@ module quadrilatero_register_lsu #(
               (!write_i && !busy)                   ? 1'b0 : write_q;
 
     valid_d = (load_fifo_valid && counter_d==0 && ~valid_q) ? 1'b1 : 
-              (load_fifo_valid && counter_d==3 &&  valid_q) ? 1'b0 : valid_q;
+              (load_fifo_valid && (counter_d==$clog2(N_ROWS)'(N_ROWS - 1)) &&  valid_q) ? 1'b0 : valid_q; // $clog2(N_ROWS)'(N_ROWS - 1) was 3, if there's a problem check here...
 
     start_d =  start              ? 1'b0 : 
               (start_q | start_i) ? 1'b1 : start_q;
@@ -176,13 +184,48 @@ module quadrilatero_register_lsu #(
     src_ptr_d  = (start) ? address_i : src_ptr_q;
 
     back_id_d = (load_fifo_valid && counter_d==0  && ~valid_q) ? instr_id_i    : 
-                  rlast_o                                       ? lsu_id_o      : back_id_q;
+                 rlast_o                                       ? lsu_id_o      : back_id_q;
 
     waddr_d   = (load_fifo_valid && counter_d==0) ? operand_reg_i : waddr_q  ;
 
     busy_d = (write_i && rlast_o && rdata_valid_i) ? 1'b0 :
              (write_i && start_i)                  ? 1'b1 : busy_q;
   end
+  //   always_comb begin: fsm_block
+  //   counter_d = '0;
+  //   rlast_o = 1'b0;
+  //   rrowaddr_o    = counter_q;
+  //   wlast_o = 1'b0;
+  //   wrowaddr_o    = counter_q;
+  //   case (state_q)
+  //     IDLE: begin
+  //       counter_d = '0;
+  //       if((we_o && wready_i) || (rdata_valid_i && rdata_ready_o && !rlast_o)) begin
+  //         state_d = COUNTING_ROWS
+  //       end
+  //       state_d = IDLE 
+  //     end
+  //     COUNTING_ROWS: begin
+  //       if((we_o && wready_i) || (rdata_valid_i && rdata_ready_o && !rlast_o)) begin
+  //         counter_d = counter_q + 1;
+  //         if(counter_d = $clog2(N_ROWS)'(N_ROWS - 1)) begin
+  //           state_d = LAST_ROW; 
+  //         end else begin
+  //           state_d = COUNTING_ROWS;
+  //         end
+  //       end
+        
+  //     end
+  //     LAST_ROW: begin
+  //       if(rlast_o || wlast_o) begin
+  //         state_d = IDLE;
+  //       end
+        
+
+  //     end
+  //     default: 
+  //   endcase
+  //end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: seq_block
     if (!rst_ni) begin
