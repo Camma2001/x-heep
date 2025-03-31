@@ -27,6 +27,7 @@ module quadrilatero_rf_sequencer #(
     output logic [READ_PORTS-1:0]                     rvalid_o   ,
     input  logic [READ_PORTS-1:0]                     rlast_i    ,  // request finished (must be PULSE)
     input  logic [READ_PORTS-1:0]                     rready_i   ,  // request finished (must be PULSE)
+    input  logic [READ_PORTS-1:0]                     rlast_row_i,  // tells us if we're reading rrowaddr_i row for the last time (for now always 1)
     input  logic [READ_PORTS-1:0][xif_pkg::X_ID_WIDTH-1:0]     rd_id_i    ,
 
 
@@ -36,6 +37,7 @@ module quadrilatero_rf_sequencer #(
     input logic  [WRITE_PORTS-1:0]                     we_i       ,
     input logic  [WRITE_PORTS-1:0]                     wlast_i    ,  // request finished (must be PULSE)
     output logic [WRITE_PORTS-1:0]                     wready_o   ,
+    input logic  [WRITE_PORTS-1:0]                     wlast_row_i,  // tells us if we're writing wrowaddr_i row for the last time (for now always 1)
     input  logic [WRITE_PORTS-1:0][xif_pkg::X_ID_WIDTH-1:0]     wr_id_i    ,
 
     // Outputs to RF
@@ -146,7 +148,7 @@ module quadrilatero_rf_sequencer #(
           scoreboard_q[m][n].wready && we_i[jj]    ) 
         begin
           wr_req [jj] = ~scoreboard_q[m][n].rvalid;
-          w_pop  [m][n] = wr_gnt[jj]; 
+          w_pop  [m][n] = wr_gnt[jj] && wlast_row_i[jj]; 
       end
     end
 
@@ -158,7 +160,7 @@ module quadrilatero_rf_sequencer #(
         begin
           rd_req [jj] = 1'b1;
           r_clr  [m][n] = rd_gnt[jj];
-          r_pop  [m][n] = rd_gnt[jj] &~ scoreboard_q[m][n].wready;
+          r_pop  [m][n] = rd_gnt[jj] &~ scoreboard_q[m][n].wready && rlast_row_i[jj];
       end
     end
 

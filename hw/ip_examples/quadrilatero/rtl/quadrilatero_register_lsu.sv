@@ -36,6 +36,7 @@ module quadrilatero_register_lsu #(
     output logic [              LLEN-1:0] wdata_o             ,
     output logic                          we_o                ,
     output logic                          wlast_o             ,
+    output logic                          wlast_row_o,
     input  logic                          wready_i            ,  // to stall the request in case the port is busy
 
     // Register Read Port for store unit
@@ -45,6 +46,7 @@ module quadrilatero_register_lsu #(
     input  logic                          rdata_valid_i       ,
     output logic                          rdata_ready_o       ,
     output logic                          rlast_o             ,
+    output logic                          rlast_row_o,
 
     // Configuration Signals
     input  logic                           start_i            ,  // start loading: MUST BE A PULSE
@@ -132,6 +134,7 @@ module quadrilatero_register_lsu #(
     waddr_o       = waddr_q;
     wrowaddr_o    = counter_q       ;
     wdata_o       = load_fifo_data & ~data_mask;
+    wlast_row_o = 1'b1;
     
   end
 
@@ -139,6 +142,7 @@ module quadrilatero_register_lsu #(
     rdata_ready_o = write_i & store_fifo_space_available &~ load_fifo_data_available &~ mask_req;
     rrowaddr_o    = counter_q       ;
     raddr_o       = operand_reg_i ;
+    rlast_row_o = 1'b1;
   end
 
   always_comb begin: lsu_ctrl_block

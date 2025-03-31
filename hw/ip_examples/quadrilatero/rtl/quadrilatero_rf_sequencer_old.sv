@@ -27,7 +27,6 @@ module quadrilatero_rf_sequencer #(
     output logic [READ_PORTS-1:0]                     rvalid_o   ,
     input  logic [READ_PORTS-1:0]                     rlast_i    ,  // request finished (must be PULSE)
     input  logic [READ_PORTS-1:0]                     rready_i   ,  // request finished (must be PULSE)
-    input  logic [READ_PORTS-1:0]                     rlast_row_i,  // tells us if we're reading rrowaddr_i row for the last time (for now always 1)
     input  logic [READ_PORTS-1:0][xif_pkg::X_ID_WIDTH-1:0]     rd_id_i    ,
 
 
@@ -37,7 +36,6 @@ module quadrilatero_rf_sequencer #(
     input logic  [WRITE_PORTS-1:0]                     we_i       ,
     input logic  [WRITE_PORTS-1:0]                     wlast_i    ,  // request finished (must be PULSE)
     output logic [WRITE_PORTS-1:0]                     wready_o   ,
-    input logic  [WRITE_PORTS-1:0]                     wlast_row_i,  // tells us if we're writing wrowaddr_i row for the last time (for now always 1)
     input  logic [WRITE_PORTS-1:0][xif_pkg::X_ID_WIDTH-1:0]     wr_id_i    ,
 
     // Outputs to RF
@@ -62,7 +60,7 @@ module quadrilatero_rf_sequencer #(
     output logic [N_REGS-1:0] rw_queue_full_o
 );
 
-  //logic  [N_REGS-1:0][N_ROWS-1:0] head_valid    ;
+  logic  [N_REGS-1:0][N_ROWS-1:0] head_valid    ;
   logic  [N_REGS-1:0][N_ROWS-1:0] rw_queue_empty;
   logic  [N_REGS-1:0][N_ROWS-1:0] w_pop         ;
   logic  [N_REGS-1:0][N_ROWS-1:0] r_pop         ;
@@ -83,7 +81,7 @@ module quadrilatero_rf_sequencer #(
 
   genvar ii,hh;
 
-  assign rw_queue_pop     = w_pop | r_pop | ~scoreboard_q;
+  assign rw_queue_pop     = w_pop | r_pop | ~head_valid;
   assign rw_queue_entry   = rw_queue_entry_i           ;
   assign rw_queue_push    = rw_queue_push_i            ;
 
@@ -118,25 +116,25 @@ module quadrilatero_rf_sequencer #(
       for (int h = 0; h < N_ROWS; h++) begin
         rw_queue_full_o[i]  |= (rw_queue_full[i][h]);
 
-        //head_valid[i][h]    = scoreboard_q[i][h].wready | scoreboard_q[i][h].rvalid;
+        head_valid[i][h]    = scoreboard_q[i][h].wready | scoreboard_q[i][h].rvalid;
 
 
         scoreboard_d[i][h].id = (rw_queue_pop[i][h] && rw_queue_empty[i][h]  ) ? '0                :     
                                 (rw_queue_pop[i][h]                          ) ? rw_queue[i][h].id : scoreboard_q[i][h].id;
 
-        //scoreboard_d[i][h].wready = (rw_queue_pop[i][h] && rw_queue_empty[i][h]) ? 1'b0                  :  
-        //                            (rw_queue_pop[i][h]                        ) ? rw_queue[i][h].wready : scoreboard_q[i][h].wready;
+        scoreboard_d[i][h].wready = (rw_queue_pop[i][h] && rw_queue_empty[i][h]) ? 1'b0                  :  
+                                    (rw_queue_pop[i][h]                        ) ? rw_queue[i][h].wready : scoreboard_q[i][h].wready;
 
-        //scoreboard_d[i][h].rvalid = (rw_queue_pop[i][h] && rw_queue_empty[i][h]           ) ? 1'b0                  : 
-        //                            (rw_queue_pop[i][h]                                   ) ? rw_queue[i][h].rvalid :  
-        //                            (r_clr[i][h]                                          ) ? 1'b0                  : scoreboard_q[i][h].rvalid;
+        scoreboard_d[i][h].rvalid = (rw_queue_pop[i][h] && rw_queue_empty[i][h]           ) ? 1'b0                  : 
+                                    (rw_queue_pop[i][h]                                   ) ? rw_queue[i][h].rvalid :  
+                                    (r_clr[i][h]                                          ) ? 1'b0                  : scoreboard_q[i][h].rvalid;
       end
     end
   end
 
   always_comb begin: ctrl_block
-    wr_req   = '0; 
-    rd_req   = '0; 
+    wr_req   = '0;
+    rd_req   = '0;
     w_pop    = '0;
     r_pop    = '0;
     r_clr    = '0;    
@@ -144,17 +142,23 @@ module quadrilatero_rf_sequencer #(
     for (int jj = 0; jj < WRITE_PORTS; jj++) begin: write_request
       automatic int m = 32'(waddr_i[jj]);
       automatic int n = 32'(wrowaddr_i[jj]);
-      wr_req [jj] = we_i[jj] && (scoreboard_q[m][n].id  == wr_id_i[jj]); //PROBLEM:  we set write request even if we're not yet ready to write 
-      w_pop  [m][n] = wlast_row_i[jj] && (scoreboard_q[m][n].id  == wr_id_i[jj]) && we_i[jj]; 
+      if( scoreboard_q[m][n].id  == wr_id_i[jj] &&
+          scoreboard_q[m][n].wready && we_i[jj]    ) 
+        begin
+          wr_req [jj] = ~scoreboard_q[m][n].rvalid;
+          w_pop  [m][n] = wr_gnt[jj]; 
+      end
     end
 
     for (int jj = 0; jj < READ_PORTS; jj++) begin: read_request
       automatic int m = 32'(raddr_i[jj]);
       automatic int n = 32'(rrowaddr_i[jj]);
-      r_pop  [m][n] = rlast_row_i[jj] && ( scoreboard_q[m][n].id  == rd_id_i[jj] && rready_i[jj]) ;
-      if(scoreboard_q[m][n].id  == rd_id_i[jj] && rready_i[jj]) begin
-        rd_req [jj] = 1'b1;
-        r_clr  [m][n] = rd_gnt[jj];
+      if( scoreboard_q[m][n].id  == rd_id_i[jj]     &&
+          scoreboard_q[m][n].rvalid && rready_i[jj]   ) 
+        begin
+          rd_req [jj] = 1'b1;
+          r_clr  [m][n] = rd_gnt[jj];
+          r_pop  [m][n] = rd_gnt[jj] &~ scoreboard_q[m][n].wready;
       end
     end
 

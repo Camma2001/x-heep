@@ -41,6 +41,7 @@ module quadrilatero_systolic_array #(
     input  logic                           weight_rdata_valid_i,
     output logic                           weight_rdata_ready_o,
     output logic                           weight_rlast_o      ,
+    output logic                           weight_rlast_row_o  ,
 
     // Data Read Register Port
     output logic [     $clog2(N_REGS)-1:0] data_raddr_o        ,
@@ -49,6 +50,7 @@ module quadrilatero_systolic_array #(
     input  logic                           data_rdata_valid_i  ,
     output logic                           data_rdata_ready_o  ,
     output logic                           data_rlast_o        ,
+    output logic                           data_rlast_row_o    ,
 
     // Accumulator Read Register Port
     output logic [     $clog2(N_REGS)-1:0] acc_raddr_o         ,
@@ -57,6 +59,7 @@ module quadrilatero_systolic_array #(
     input  logic                           acc_rdata_valid_i   ,
     output logic                           acc_rdata_ready_o   ,
     output logic                           acc_rlast_o         ,
+    output logic                           acc_rlast_row_o     ,
 
     // Accumulator Out Write Register Port
     output logic [     $clog2(N_REGS)-1:0] res_waddr_o         ,
@@ -64,6 +67,7 @@ module quadrilatero_systolic_array #(
     output logic [               ALEN-1:0] res_wdata_o         ,
     output logic                           res_we_o            ,
     output logic                           res_wlast_o         ,
+    output logic                           res_wlast_row_o     ,
     input  logic                           res_wready_i        ,
 
     // RF Instruction ID
@@ -147,24 +151,28 @@ module quadrilatero_systolic_array #(
     weight_rrowaddr_o    = ff_counter_q              ;
     weight_rdata_ready_o = (ff_state_q != FF_IDLE) &~ mask_req   ; 
     weight_rlast_o       = ff_counter_q==LastRow;
+    weight_rlast_row_o   = 1'b1;
 
     // Data Read Register Port
     data_raddr_o         = data_reg_q                ;
     data_rrowaddr_o      = ff_counter_q              ;
     data_rdata_ready_o   = (ff_state_q != FF_IDLE)  &~ mask_req  ;
     data_rlast_o         = ff_counter_q==LastRow;
+    data_rlast_row_o     = 1'b1;
 
     // Accumulator Read Register Port
     acc_raddr_o          = acc_reg_q                 ;
     acc_rrowaddr_o       = ff_counter_q              ;
     acc_rdata_ready_o    = (ff_state_q != FF_IDLE) &~ mask_req   ;
     acc_rlast_o          = ff_counter_q==LastRow;
+    acc_rlast_row_o      = 1'b1;
 
     // Accumulator Out Write Register Port
     res_waddr_o         = dest_reg_q                ;
     res_wrowaddr_o      = dr_counter_q              ;
     res_we_o            = (dr_state_q == DR_ACTIVE)  &~ mask_req  ;
     res_wlast_o         = dr_counter_q==LastRow;
+    res_wlast_row_o     = 1'b1;
   end
 
   always_comb begin: finished_signal
