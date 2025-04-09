@@ -80,7 +80,7 @@ module quadrilatero_rf_sequencer #(
   quadrilatero_pkg::rw_queue_t [N_REGS-1:0][N_ROWS-1:0]   scoreboard_q  ;
   genvar ii,hh;
 
-  assign rw_queue_pop     = w_pop | r_pop | ~head_valid; //problem 
+  assign rw_queue_pop     = w_pop | r_pop | ~head_valid; 
   assign rw_queue_entry   = rw_queue_entry_i           ;
   assign rw_queue_push    = rw_queue_push_i            ;
 
@@ -121,13 +121,6 @@ module quadrilatero_rf_sequencer #(
         scoreboard_d[i][h] = (rw_queue_pop[i][h] && rw_queue_empty[i][h]  ) ? '0                :     
                                 (rw_queue_pop[i][h]                          ) ? rw_queue[i][h] : scoreboard_q[i][h];
               
-
-        // scoreboard_d[i][h].wready = (rw_queue_pop[i][h] && rw_queue_empty[i][h]) ? 1'b0                  :  
-        //                             (rw_queue_pop[i][h]                        ) ? rw_queue[i][h].wready : scoreboard_q[i][h].wready;
-
-        // scoreboard_d[i][h].rvalid = (rw_queue_pop[i][h] && rw_queue_empty[i][h]           ) ? 1'b0                  : 
-        //                             (rw_queue_pop[i][h]                                   ) ? rw_queue[i][h].rvalid :  
-        //                             (r_clr[i][h]                                          ) ? 1'b0                  : scoreboard_q[i][h].rvalid;
       end
     end
   end
@@ -180,9 +173,6 @@ module quadrilatero_rf_sequencer #(
         block = 1'b0;
       end
 
-      // if(we_i    [quadrilatero_pkg::SYSTOLIC_ARRAY  ] && same_id_acc && block) begin
-      //   wr_req[quadrilatero_pkg::SYSTOLIC_ARRAY  ] = 1'b0;
-      // end
       if(rready_i[quadrilatero_pkg::SYSTOLIC_ARRAY_A] && same_id_A   && block) begin
         rd_req[quadrilatero_pkg::SYSTOLIC_ARRAY_A]  = 1'b0;
         r_pop[raddr_i[quadrilatero_pkg::SYSTOLIC_ARRAY_A]][rrowaddr_i[quadrilatero_pkg::SYSTOLIC_ARRAY_A]] = 1'b0;
