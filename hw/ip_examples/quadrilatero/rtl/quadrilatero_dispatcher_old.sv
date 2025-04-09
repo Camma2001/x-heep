@@ -168,8 +168,8 @@ module quadrilatero_dispatcher #(
   
     delta = 3'b0;
     for(int ii = 0; ii < N_REGS; ii++) begin
-      delta += {2'b0, rvalid[ii]};
-      delta += {2'b0, wready[ii]};
+      delta += {2'b0, rw_queue_entry_o[ii].rvalid};
+      delta += {2'b0, rw_queue_entry_o[ii].wready};
     end
 
     done  = (delta == outstanding_op_q);
@@ -201,7 +201,24 @@ module quadrilatero_dispatcher #(
     
     outstanding_op_d = {1'b0,n_matrix_operands_read_i} + {2'b0, rf_writeback_i};
   end
-  
+  // always_comb begin: updated_next_value
+  //   if((instr_ready || state_q==IDLE)) begin //we're ready to continue with the next instruction
+  //     rreg_d = rf_read_regs_i;
+  //     wreg_d = rf_writeback_i;
+
+  //     rs_d = rs_i;
+  //     rs_valid_d = rs_valid_i;
+  //     instr_id_d = instr_id_i;
+  //     datatype_d = datatype_i;
+  //     is_store_d = is_store_i;
+  //     is_float_d = is_float_i;
+  //   end
+  //   dispatch_d              = '0         ;
+  //   dispatch_d[exec_unit_i] = instr_ready;
+
+  //   push_operandw_d = rf_writeback_i                 & instr_ready;
+    
+  // end
   always_comb begin: rw_queue_block
     rvalid = '0;
     wready = '0;
@@ -210,8 +227,10 @@ module quadrilatero_dispatcher #(
     rvalid[rreg_q[2]] |= reg3_valid &~ ld_reg3;
     wready[wreg_q   ] = regw_valid &~ ld_regw;
     for(int ii = 0; ii < N_REGS; ii++) begin
+      rw_queue_entry_o[ii].rvalid = rvalid[ii];
+      rw_queue_entry_o[ii].wready = wready[ii];
       rw_queue_entry_o[ii].id     = instr_id_q;
-      rw_queue_push_o [ii]        = rvalid[ii] | wready[ii];
+      rw_queue_push_o [ii]        = rw_queue_entry_o[ii].rvalid | rw_queue_entry_o[ii].wready;
     end
   end
 

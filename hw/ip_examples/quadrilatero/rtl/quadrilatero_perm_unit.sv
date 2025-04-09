@@ -19,7 +19,6 @@ module quadrilatero_perm_unit #(
     output logic [               RLEN-1:0] wdata_o             ,
     output logic                           we_o                ,
     output logic                           wlast_o             ,
-    output logic                           wlast_row_o,
     input  logic                           wready_i            ,  // to stall the request in case the port is busy
 
     // Configuration Signals
@@ -150,8 +149,7 @@ module quadrilatero_perm_unit #(
   assign wrowaddr_o          = counter_q                  ;
   assign wdata_o             = '0                         ;
   assign we_o                = write_started_q &~ mask_req;
-  assign wlast_o             = finished                   ;
-  assign wlast_row_o         = 1'b1;
+  assign wlast_o             = write_started_q &~ mask_req                  ;
   assign busy_o              = fifo_full | fifo_almost_full;
   assign id_o                = id_q                       ;
   assign finished_o          = finished_q                 ;

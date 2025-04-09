@@ -33,7 +33,7 @@ module quadrilatero_register_lsu #(
     // Register Write Port for load unit
     output logic [    $clog2(N_REGS)-1:0] waddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] wrowaddr_o          ,
-    output logic [quadrilatero_pkg::RLEN-1:0] wdata_o             ,
+    output logic [              LLEN-1:0] wdata_o             ,
     output logic                          we_o                ,
     output logic                          wlast_o             ,
     input  logic                          wready_i            ,  // to stall the request in case the port is busy
@@ -41,7 +41,7 @@ module quadrilatero_register_lsu #(
     // Register Read Port for store unit
     output logic [    $clog2(N_REGS)-1:0] raddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] rrowaddr_o          ,
-    input  logic [quadrilatero_pkg::RLEN-1:0] rdata_i             ,
+    input  logic [              LLEN-1:0] rdata_i             ,
     input  logic                          rdata_valid_i       ,
     output logic                          rdata_ready_o       ,
     output logic                          rlast_o             ,
@@ -126,7 +126,6 @@ module quadrilatero_register_lsu #(
   logic [quadrilatero_pkg::RLEN-1:0] load_row_buffer_q;
 
   logic [quadrilatero_pkg::RLEN-1:0] store_mask;
-  logic [quadrilatero_pkg::RLEN-1:0] load_mask;
 
   assign mask_req     = (counter_q == LastRow) & finished_o & ~finished_ack_i;
   always_comb begin
@@ -137,11 +136,11 @@ module quadrilatero_register_lsu #(
 
   always_comb begin: write_to_RF
     data_mask     = '1 << (8 * n_bytes_cols_i);  // SPEC says to load zeros outside of rows and cols
-    load_mask     = ({{(quadrilatero_pkg::RLEN - LLEN){1'b0}}, {LLEN{1'b1}}}) << (LLEN * access_counter_q);
+
     we_o          = load_fifo_data_available &~ mask_req && (access_counter_q == NumAccesses -1); // && ((access_counter_q == NumAccesses -1) || (lsu_state_q == LSU_LOAD && !load_fifo_valid)); //last part is sketchy
-    waddr_o       = lsu_state_q == LSU_IDLE? waddr_d : waddr_q;
+    waddr_o       = waddr_q;
     wrowaddr_o    = counter_q       ;
-    load_row_buffer_d = (load_row_buffer_q & ~load_mask) | (load_fifo_data << (LLEN * access_counter_q));
+    load_row_buffer_d = load_row_buffer_q | (load_fifo_data << (LLEN * access_counter_q));
     wdata_o       = load_row_buffer_d & ~data_mask; //watch out with load_row_buffer_d instead of load_row_buffer_q
     
   end
@@ -155,18 +154,18 @@ module quadrilatero_register_lsu #(
 
   always_comb begin: lsu_ctrl_block
     load_fifo_pop   = wready_i;
-    store_fifo_data = (rdata_i & store_mask) >> (LLEN * access_counter_q);
+    store_fifo_data = rdata_i & store_mask;
     store_fifo_push = rdata_ready_o && rdata_valid_i;
     lsu_ready = store_fifo_empty | (write_i &~ load_fifo_data_available &~ lsu_busy_q);
     start  = (start_i | start_q) & lsu_ready;
-    busy_o = (write_i ? busy_d : busy) | start_q; 
+    busy_o = (write_i ? busy_d : busy ) | start_q; 
     
     stride  = (start) ? stride_i  : stride_q;
     src_ptr = (start) ? address_i : src_ptr_q;
   end
 
   always_comb begin: next_value
-    write_d = (write_i && (counter_q == LastRow) && rdata_valid_i) ? 1'b1 : 
+    write_d = (write_i && (counter_q == LastRow) && rdata_valid_i) ? 1'b1 :
               (!write_i && !busy)                   ? 1'b0 : write_q;
   
     start_d =  start              ? 1'b0 : 
@@ -190,19 +189,18 @@ module quadrilatero_register_lsu #(
   back_id_d = back_id_q;
   waddr_d = waddr_q;
 
-  case (lsu_state_q)
+  case (lsu_state_q) 
     LSU_IDLE: begin
-      back_id_d = instr_id_i; // was inside if 
-      waddr_d = operand_reg_i;
       if(load_fifo_valid && !write_i && wready_i) begin //checking for wready makes sense but somehow is wrong?
-        counter_d = counter_q + 1;
         wlast_o = 1'b1;
-        //back_id_d = instr_id_i; was here
+        counter_d = counter_q + 1;
+        back_id_d = instr_id_i;
+        waddr_d = operand_reg_i;
         access_counter_d = '0;
         lsu_state_d = LSU_LOAD;
       end else if (write_i & store_fifo_space_available && rdata_valid_i) begin
-        counter_d = counter_q + 1;
         rlast_o = 1'b1;
+        counter_d = counter_q + 1;
         access_counter_d = '0;
         lsu_state_d = LSU_STORE;
       end
@@ -210,104 +208,100 @@ module quadrilatero_register_lsu #(
     end
     LSU_LOAD: begin 
       if(load_fifo_valid) begin
-        //maybe here wlast_o = 1'b1; ?
         if(wready_i) begin
+          wlast_o = 1'b1;
           if(counter_q == LastRow) begin
-            if(access_counter_q == NumAccesses - 1) begin
-              wlast_o = 1'b1;
+            //if(access_counter_q == NumAccesses - 1) begin
+             
               //we_o = 1'b1;
               access_counter_d = '0;
               counter_d = '0;
               lsu_state_d = LSU_DONE;
               back_id_d = instr_id_i;
               waddr_d = operand_reg_i;
-            end else begin
-              access_counter_d = access_counter_q + 1;
+            // end else begin
+            //   access_counter_d = access_counter_q + 1;
             end
-          end else begin
-            if(access_counter_q == NumAccesses - 1) begin
+          else begin
+            //if(access_counter_q == NumAccesses - 1) begin
               //we_o = 1'b1;
-              wlast_o = 1'b1;
+              
               access_counter_d = '0;
               counter_d = counter_q + 1;
-            end else begin
-              access_counter_d = access_counter_q + 1;
+            // end else begin
+            //   access_counter_d = access_counter_q + 1;
             end
           end
-        end
+      
       // end else begin
       //   //wlast_o = 1'b1; // maybe wrong
       //   //we_o = 1'b1;
       //   counter_d = '0;
       //   lsu_state_d = LSU_DONE;
       end else begin
-        if(write_i && wready_i) begin // transition from load to store
-          if(access_counter_q == NumAccesses - 1) begin
-            counter_d = '0;
-            wlast_o = 1'b1;
-            lsu_state_d = LSU_DONE;
-            access_counter_d = '0;
-            back_id_d = instr_id_i;
-            waddr_d = operand_reg_i;
-           
-          end else begin
-            access_counter_d = access_counter_q + 1;
-          end
-        end
-        
+       // if(access_counter_q == NumAccesses - 1) begin
+          //wlast_o = 1'b1; // very random but apparantly needed
+          //we_o = 1'b1;
+          access_counter_d = '0;
+          counter_d = '0;
+          lsu_state_d = LSU_DONE;
+          // end else begin
+          //   access_counter_d = access_counter_q + 1;
+          // end
+         
       end
     end
     LSU_STORE: begin
       if(store_fifo_space_available && write_i && rdata_valid_i) begin
         //if(rdata_valid_i) begin
+        rlast_o = 1'b1;
           if(counter_q == LastRow) begin
-            if(access_counter_q == NumAccesses - 1) begin
-              rlast_o = 1'b1;
+            //if(access_counter_q == NumAccesses - 1) begin
+           
               access_counter_d = '0;
               counter_d = '0;
               lsu_state_d = LSU_DONE;
-              back_id_d = instr_id_i;
-              waddr_d = operand_reg_i;
-            end else begin
-              access_counter_d = access_counter_q + 1;
-            end
+              back_id_d = lsu_id_o;
+            // end else begin
+            //   access_counter_d = access_counter_q + 1;
+            // end
             
           end else begin
-            if(access_counter_q == NumAccesses - 1) begin
-              rlast_o = 1'b1;
+            //if(access_counter_q == NumAccesses - 1) begin
+           
               access_counter_d = '0;
               counter_d = counter_q + 1;
-            end else begin
-              access_counter_d = access_counter_q + 1;
-            end
+            // end else begin
+            //   access_counter_d = access_counter_q + 1;
+            // end
           end
         end else begin // this case is very suspicious
         //rlast_o = 1'b1; // maybe wrong
         counter_d = '0;
-        back_id_d = instr_id_i;
+        back_id_d = lsu_id_o;
         lsu_state_d = LSU_DONE;
       end
     end
     LSU_DONE: begin
       if(load_fifo_valid && !write_i && wready_i) begin
-        if(access_counter_q == NumAccesses - 1) begin
+        //if(access_counter_q == NumAccesses - 1) begin
           access_counter_d = '0;
           counter_d = counter_q + 1;
           wlast_o = 1'b1;
           //we_o = 1'b1;
           lsu_state_d = LSU_LOAD;
-        end else begin
-          access_counter_d = access_counter_q + 1;
-        end    
+        // end else begin
+        //   access_counter_d = access_counter_q + 1;
+        // end    
       end else if (write_i && store_fifo_space_available && rdata_valid_i) begin
-        if(access_counter_q == NumAccesses - 1) begin
+        //if(access_counter_q == NumAccesses - 1) begin
           counter_d = counter_q + 1;
           rlast_o = 1'b1;
           lsu_state_d = LSU_STORE;
           access_counter_d = '0;
-        end else begin
-          access_counter_d = access_counter_q + 1;
-        end
+        // end else begin
+        //   access_counter_d = access_counter_q + 1;
+        // end
       end else begin
         lsu_state_d = LSU_IDLE;
       end
@@ -372,7 +366,7 @@ module quadrilatero_register_lsu #(
 
       //Configuration
       .start_i                      (start                      ),
-      .write_i                      (write_i), // & ~(lsu_state_q == LSU_LOAD && write_i)
+      .write_i                                                   ,
       .busy_o                       (busy                       ),
       .terminate_o                  (terminate                  ),
 

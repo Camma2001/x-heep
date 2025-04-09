@@ -54,7 +54,9 @@ package quadrilatero_pkg;
   } lsu_conf_t;
 
   typedef struct packed {
-    logic [xif_pkg::X_ID_WIDTH-1:0] id;     
+    logic [xif_pkg::X_ID_WIDTH-1:0] id;  
+    logic                           rvalid;  
+    logic                           wready;     
   } rw_queue_t;
 
   localparam int unsigned WR_PORT = (WRITE_PORTS > 1) ? $clog2(WRITE_PORTS) : 1;

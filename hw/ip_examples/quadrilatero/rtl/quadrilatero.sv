@@ -131,7 +131,6 @@ module quadrilatero
   logic [quadrilatero_pkg::READ_PORTS-1    :0][quadrilatero_pkg::RLEN-1:0]           rf_seq_rdata_from_fu   ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0]                                     rf_seq_rvalid_from_fu  ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0]                                     rf_seq_rlast_from_fu   ;
-  logic [quadrilatero_pkg::READ_PORTS-1    :0]                                     rf_seq_rlast_row_from_fu   ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0]                                     rf_seq_rready_from_fu  ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0][xif_pkg::X_ID_WIDTH-1:0]            rf_seq_rd_id_from_fu   ;
 
@@ -140,7 +139,6 @@ module quadrilatero
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0][quadrilatero_pkg::RLEN-1:0]           rf_seq_wdata_from_fu   ;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0]                                     rf_seq_we_from_fu      ;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0]                                     rf_seq_wlast_from_fu   ;
-  logic [quadrilatero_pkg::WRITE_PORTS-1   :0]                                     rf_seq_wlast_row_from_fu   ;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0]                                     rf_seq_wready_from_fu  ;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0][xif_pkg::X_ID_WIDTH-1:0]            rf_seq_wr_id_from_fu   ;
 
@@ -171,7 +169,6 @@ module quadrilatero
   logic                                      sa_weight_rdata_valid;
   logic                                      sa_weight_rdata_ready;
   logic                                      sa_weight_rlast      ;
-  logic                                      sa_weight_rlast_row  ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            sa_input_id          ;
   logic [quadrilatero_pkg::RLEN-1:0]           sa_weight_rdata      ;
   logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] sa_weight_raddr      ;
@@ -180,7 +177,6 @@ module quadrilatero
   logic                                      sa_data_rdata_valid  ;
   logic                                      sa_data_rdata_ready  ;
   logic                                      sa_data_rlast        ;
-  logic                                      sa_data_rlast_row    ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            sa_output_id         ;
   logic [quadrilatero_pkg::RLEN-1:0]           sa_data_rdata        ;
   logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] sa_data_raddr        ;
@@ -189,7 +185,6 @@ module quadrilatero
   logic                                      sa_acc_rdata_valid   ;
   logic                                      sa_acc_rdata_ready   ;
   logic                                      sa_acc_rlast         ;
-  logic                                      sa_acc_rlast_row     ;
   logic [quadrilatero_pkg::RLEN-1:0]           sa_acc_rdata         ;
   logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] sa_acc_raddr         ;
   logic [$clog2(quadrilatero_pkg::N_ROWS)-1:0] sa_acc_rrowaddr      ;
@@ -197,7 +192,6 @@ module quadrilatero
   logic                                      sa_res_we            ;
   logic                                      sa_res_wready        ;
   logic                                      sa_res_wlast         ;
-  logic                                      sa_res_wlast_row;
   logic [quadrilatero_pkg::RLEN-1:0]           sa_res_wdata         ;
   logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] sa_res_waddr         ;
   logic [$clog2(quadrilatero_pkg::N_ROWS)-1:0] sa_res_wrowaddr      ;
@@ -230,7 +224,6 @@ module quadrilatero
 
   logic                                      lsu_we               ;
   logic                                      lsu_wlast            ;
-  logic                                      lsu_wlast_row        ;
   logic                                      lsu_wready           ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            lsu_id               ;
   logic [quadrilatero_pkg::RLEN-1:0]           lsu_wdata            ;
@@ -238,7 +231,6 @@ module quadrilatero
   logic [$clog2(quadrilatero_pkg::N_ROWS)-1:0] lsu_wrowaddr         ;
 
   logic                                      lsu_rlast            ;
-  logic                                      lsu_rlast_row        ;
   logic                                      lsu_rready           ;
   logic                                      lsu_rvalid           ;
   logic [quadrilatero_pkg::RLEN-1:0]           lsu_rdata            ;
@@ -258,7 +250,6 @@ module quadrilatero
   logic                                      perm_busy                  ;
   logic                                      perm_unit_we               ;
   logic                                      perm_unit_wlast            ;
-  logic                                      perm_unit_wlast_row        ;
   logic                                      perm_unit_wready           ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            perm_unit_id               ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            perm_unit_instr_id         ;
@@ -520,7 +511,6 @@ module quadrilatero
     rf_seq_raddr_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_W] = sa_weight_raddr      ;
     rf_seq_rrowaddr_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY_W] = sa_weight_rrowaddr   ;
     rf_seq_rlast_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_W] = sa_weight_rlast      ;
-    rf_seq_rlast_row_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY_W] = sa_weight_rlast_row      ;
     rf_seq_rready_from_fu  [quadrilatero_pkg::SYSTOLIC_ARRAY_W] = sa_weight_rdata_ready;
     rf_seq_rd_id_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_W] = sa_input_id          ;
 
@@ -528,7 +518,6 @@ module quadrilatero
     rf_seq_raddr_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_D] = sa_data_raddr        ;
     rf_seq_rrowaddr_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY_D] = sa_data_rrowaddr     ;
     rf_seq_rlast_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_D] = sa_data_rlast        ;
-    rf_seq_rlast_row_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY_D] = sa_data_rlast_row        ;
     rf_seq_rready_from_fu  [quadrilatero_pkg::SYSTOLIC_ARRAY_D] = sa_data_rdata_ready  ;
     rf_seq_rd_id_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_D] = sa_input_id          ;
 
@@ -536,7 +525,6 @@ module quadrilatero
     rf_seq_raddr_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_A] = sa_acc_raddr         ;
     rf_seq_rrowaddr_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY_A] = sa_acc_rrowaddr      ;
     rf_seq_rlast_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_A] = sa_acc_rlast         ;
-    rf_seq_rlast_row_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY_A] = sa_acc_rlast_row         ;
     rf_seq_rready_from_fu  [quadrilatero_pkg::SYSTOLIC_ARRAY_A] = sa_data_rdata_ready  ;
     rf_seq_rd_id_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY_A] = sa_input_id          ;
 
@@ -544,7 +532,6 @@ module quadrilatero
     rf_seq_raddr_from_fu   [quadrilatero_pkg::LSU_R           ] = lsu_raddr            ;
     rf_seq_rrowaddr_from_fu[quadrilatero_pkg::LSU_R           ] = lsu_rrowaddr         ;
     rf_seq_rlast_from_fu   [quadrilatero_pkg::LSU_R           ] = lsu_rlast            ;
-    rf_seq_rlast_row_from_fu[quadrilatero_pkg::LSU_R         ] = lsu_rlast_row            ;
     rf_seq_rready_from_fu  [quadrilatero_pkg::LSU_R           ] = lsu_rready           ;
     rf_seq_rd_id_from_fu   [quadrilatero_pkg::LSU_R           ] = lsu_id               ;
 
@@ -555,7 +542,6 @@ module quadrilatero
     rf_seq_wdata_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY]   = sa_res_wdata         ;
     rf_seq_we_from_fu      [quadrilatero_pkg::SYSTOLIC_ARRAY]   = sa_res_we            ;
     rf_seq_wlast_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY]   = sa_res_wlast         ;
-    rf_seq_wlast_row_from_fu[quadrilatero_pkg::SYSTOLIC_ARRAY]   = sa_res_wlast_row         ;
     rf_seq_wr_id_from_fu   [quadrilatero_pkg::SYSTOLIC_ARRAY]   = sa_output_id         ;
 
     // LSU Write Port
@@ -564,7 +550,6 @@ module quadrilatero
     rf_seq_wdata_from_fu   [quadrilatero_pkg::LSU_W         ]   = lsu_wdata            ;
     rf_seq_we_from_fu      [quadrilatero_pkg::LSU_W         ]   = lsu_we               ;
     rf_seq_wlast_from_fu   [quadrilatero_pkg::LSU_W         ]   = lsu_wlast            ;
-    rf_seq_wlast_row_from_fu[quadrilatero_pkg::LSU_W       ]   = lsu_wlast_row            ;
     rf_seq_wr_id_from_fu   [quadrilatero_pkg::LSU_W         ]   = lsu_id               ;
 
     // RF Exec Unit Write Port
@@ -573,7 +558,6 @@ module quadrilatero
     rf_seq_wdata_from_fu   [quadrilatero_pkg::RF_W          ]   = perm_unit_wdata   ;
     rf_seq_we_from_fu      [quadrilatero_pkg::RF_W          ]   = perm_unit_we      ;
     rf_seq_wlast_from_fu   [quadrilatero_pkg::RF_W          ]   = perm_unit_wlast   ;
-    rf_seq_wlast_row_from_fu[quadrilatero_pkg::RF_W      ]   = perm_unit_wlast_row   ;
     rf_seq_wr_id_from_fu   [quadrilatero_pkg::RF_W          ]   = perm_unit_id      ;
   end
 
@@ -598,7 +582,6 @@ module quadrilatero
       .rvalid_o          (rf_seq_rvalid_from_fu  ),
       .rlast_i           (rf_seq_rlast_from_fu   ),
       .rready_i          (rf_seq_rready_from_fu  ),
-      .rlast_row_i       (rf_seq_rlast_row_from_fu), 
       .rd_id_i           (rf_seq_rd_id_from_fu   ),
 
       .waddr_i           (rf_seq_waddr_from_fu   ),
@@ -607,7 +590,6 @@ module quadrilatero
       .we_i              (rf_seq_we_from_fu      ),
       .wlast_i           (rf_seq_wlast_from_fu   ),
       .wready_o          (rf_seq_wready_from_fu  ),
-      .wlast_row_i       (rf_seq_wlast_row_from_fu), 
       .wr_id_i           (rf_seq_wr_id_from_fu   ),
 
       // Outputs to RF
@@ -711,7 +693,6 @@ module quadrilatero
       .data_rdata_valid_i     (sa_data_rdata_valid            ),
       .data_rdata_ready_o     (sa_data_rdata_ready            ),  // unused
       .data_rlast_o           (sa_data_rlast                  ),
-      .data_rlast_row_o       (sa_data_rlast_row              ),   
 
       // Weight Read Register Port
       .weight_raddr_o         (sa_weight_raddr                ),
@@ -720,7 +701,6 @@ module quadrilatero
       .weight_rdata_valid_i   (sa_weight_rdata_valid          ),
       .weight_rdata_ready_o   (sa_weight_rdata_ready          ),
       .weight_rlast_o         (sa_weight_rlast                ),
-      .weight_rlast_row_o     (sa_weight_rlast_row            ),
 
       // Accumulator Read Register Port
       .acc_raddr_o            (sa_acc_raddr                   ),
@@ -729,7 +709,6 @@ module quadrilatero
       .acc_rdata_valid_i      (sa_acc_rdata_valid             ),
       .acc_rdata_ready_o      (sa_acc_rdata_ready             ),
       .acc_rlast_o            (sa_acc_rlast                   ),
-      .acc_rlast_row_o        (sa_acc_rlast_row               ),
 
       // Accumulator Out Write Register Port
       .res_waddr_o            (sa_res_waddr                   ),
@@ -737,7 +716,6 @@ module quadrilatero
       .res_wdata_o            (sa_res_wdata                   ),
       .res_we_o               (sa_res_we                      ),
       .res_wlast_o            (sa_res_wlast                   ),
-      .res_wlast_row_o        (sa_res_wlast_row               ),
       .res_wready_i           (sa_res_wready                  ),
 
       .sa_input_id_o          (sa_input_id                    ),
@@ -826,7 +804,6 @@ module quadrilatero
       .wdata_o              (lsu_wdata                              ),
       .we_o                 (lsu_we                                 ),
       .wlast_o              (lsu_wlast                              ),
-      .wlast_row_o          (lsu_wlast_row                          ),
       .wready_i             (lsu_wready                             ),
 
       // Register Read Port for Store Unit
@@ -836,7 +813,6 @@ module quadrilatero
       .rdata_valid_i        (lsu_rvalid                             ),
       .rdata_ready_o        (lsu_rready                             ),
       .rlast_o              (lsu_rlast                              ),
-      .rlast_row_o          (lsu_rlast_row                          ),
 
       // Configuration Signals
       .stride_i             (lsu_ctrl_issued_instr.stride           ),  // stride value
@@ -888,7 +864,6 @@ module quadrilatero
       .wdata_o              (perm_unit_wdata             ),
       .we_o                 (perm_unit_we                ),
       .wlast_o              (perm_unit_wlast             ),
-      .wlast_row_o          (perm_unit_wlast_row         ),
       .wready_i             (perm_unit_wready            ),
 
       // Configuration Signals
