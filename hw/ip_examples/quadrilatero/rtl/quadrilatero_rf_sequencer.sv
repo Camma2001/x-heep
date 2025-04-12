@@ -220,7 +220,7 @@ module quadrilatero_rf_sequencer #(
     wrowaddr_o = wrowaddr_i;
     wdata_o    = wdata_i   ;
     we_o       = wr_gnt    ;
-    wready_o   = we_i    ;
+    wready_o   = wr_gnt    ;
   end
 
   if(RF_READ_PORTS != READ_PORTS) begin: read_block_wArb

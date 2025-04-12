@@ -5,7 +5,7 @@
 // Author: Saverio Nasturzio
 
 module quadrilatero_register_lsu_controller #(
-    parameter N_SLOTS = 3
+    parameter N_SLOTS = 3 //TODO maybe change that to quadrilatero_pkg::MESH_WIDTH
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -18,10 +18,12 @@ module quadrilatero_register_lsu_controller #(
     // To Register Loader
     input logic busy_i,  // Load Unit busy
     output logic start_o,  // WL will start executing new instruction
+    input logic finished_i, //LSU has finished executing instruction
     output quadrilatero_pkg::lsu_instr_t issued_instr_o,  // issued instruction
     output quadrilatero_pkg::lsu_conf_t issued_instr_conf_o  // issued instruction configuration
 );
-
+  logic finished_d;
+  logic finished_q;
   localparam int unsigned USAGE = N_SLOTS > 1 : $clog2(N_SLOTS) : 0;
   logic issue_queue_empty;
   logic start_load;
@@ -38,8 +40,10 @@ module quadrilatero_register_lsu_controller #(
       issued_instr_ff <= '0;
       issued_instr_conf_ff <= '0;
       start_o <= '0;
+      finished_q <= 1'b0;
     end else begin
       start_o <= '0;
+      finished_q <= finished_d;
       if (start_load) begin
         issued_instr_ff <= fifo_data_out;
         issued_instr_conf_ff <= csr_config_i;
@@ -48,7 +52,7 @@ module quadrilatero_register_lsu_controller #(
     end
 
   end
-
+  assign finished_d = finished_i;
   assign issued_instr_conf_o = issued_instr_conf_ff;
   assign issued_instr_o = issued_instr_ff;
 

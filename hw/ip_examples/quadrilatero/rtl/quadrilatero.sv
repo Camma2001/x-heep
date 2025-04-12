@@ -671,7 +671,7 @@ module quadrilatero
   );
 
   quadrilatero_systolic_array #(
-      .MESH_WIDTH(MESH_WIDTH),
+      .MESH_WIDTH(quadrilatero_pkg::SA_MESH_WIDTH),
       .FPU        (FPU      )
   ) sa_inst (
       .clk_i                                                   ,
@@ -774,6 +774,7 @@ module quadrilatero
 
       // To Register Loader
       .busy_i               (lsu_busy | x_res_almost_full),  // Load Unit busy
+      .finished_i           (lsu_finished),
       .start_o              (lsu_ctrl_start              ),  // 
       .issued_instr_o       (lsu_ctrl_issued_instr       ),  // issued instruction
       .issued_instr_conf_o  (lsu_ctrl_issued_instr_conf  )    // issued instruction configuration
