@@ -111,6 +111,7 @@ module quadrilatero_systolic_array #(
   logic [$clog2(K)-1:0] dr_row_counter_d;
   logic [$clog2(K)-1:0] dr_row_counter_q;
   logic [$clog2(quadrilatero_pkg::RLEN/DATA_WIDTH)-1:0] weight_base_row;
+  logic last_dr_write;
 
   // Data Masks
   logic [quadrilatero_pkg::RLEN-1:0] data_mask;
@@ -119,11 +120,15 @@ module quadrilatero_systolic_array #(
   //logic [quadrilatero_pkg::RLEN-1:0] res_mask;
 
   logic [ALEN-1:0] data_rdata_masked;
+  logic [quadrilatero_pkg::RLEN-1:0] data_rdata_shifted;
   logic [ALEN-1:0] weight_rdata_masked;
+  logic [quadrilatero_pkg::RLEN-1:0] weight_rdata_shifted;
   logic [ALEN-1:0] acc_rdata_masked;
+  logic [quadrilatero_pkg::RLEN-1:0] acc_rdata_shifted;
   logic [ALEN-1:0] res_wdata_partial;
-  logic [quadrilatero_pkg::RLEN-1:0] res_wdata_buffer_d;
-  logic [quadrilatero_pkg::RLEN-1:0] res_wdata_buffer_q;
+  logic [quadrilatero_pkg::RLEN-1:0] res_rdata_shifted;
+  logic [N_ROWS-1:0][(quadrilatero_pkg::RLEN - ALEN)-1:0] res_wdata_buffer_d;
+  logic [N_ROWS-1:0][(quadrilatero_pkg::RLEN - ALEN)-1:0]res_wdata_buffer_q;
 
 
   logic                           valid              ;
@@ -176,10 +181,11 @@ module quadrilatero_systolic_array #(
   always_comb begin: rf_block
     // Weight Read Register Port
     weight_mask = {(ALEN){1'b1}} << (ALEN * ff_k_counter_q);
-    weight_base_row = N_ROWS * ff_it_counter_q;
+    weight_base_row = (quadrilatero_pkg::RLEN / DATA_WIDTH) - (N_ROWS * (ff_it_counter_q + 1));
     weight_raddr_o       = weight_reg_q              ;
-    weight_rrowaddr_o    = ff_counter_q  + weight_base_row;           
-    weight_rdata_masked  = (weight_rdata_i & weight_mask) >> ALEN * ff_k_counter_q; //TODO fix
+    weight_rrowaddr_o    = ff_counter_q  + weight_base_row;    
+    weight_rdata_shifted = (weight_rdata_i >> ALEN * ff_k_counter_q);      
+    weight_rdata_masked  = weight_rdata_shifted[ALEN-1:0]; //TODO fix
     weight_rdata_ready_o = (ff_state_q != FF_IDLE) &~ mask_req   ; 
     weight_rlast_o       = (ff_state_q != FF_IDLE) && (ff_k_counter_q == (K-1) && ff_row_counter_q == (RegLastRow-1))  ; // might leave at ff_it_counter_q == (K-1) to free all regs at the same time?
 
@@ -187,7 +193,8 @@ module quadrilatero_systolic_array #(
     data_mask = {{(ALEN){1'b1}}, {(quadrilatero_pkg::RLEN - ALEN){1'b0}}} << (ALEN * ff_it_counter_q); // TODO fix 
     data_raddr_o         = data_reg_q                ;
     data_rrowaddr_o      = ff_counter_q + (ff_row_counter_q * N_ROWS)          ;
-    data_rdata_masked    = (data_rdata_i & data_mask) >> ALEN * ff_it_counter_q ; //TODO fix
+    data_rdata_shifted   = (data_rdata_i << ALEN * ff_it_counter_q);
+    data_rdata_masked    = data_rdata_shifted[quadrilatero_pkg::RLEN-1:quadrilatero_pkg::RLEN-ALEN] ; //TODO fix
     data_rdata_ready_o   = (ff_state_q != FF_IDLE)  &~ mask_req  ;
     data_rlast_o         = ff_state_q != FF_IDLE && (ff_it_counter_q == (K-1) && ff_k_counter_q == (K-1)) ;
 
@@ -195,17 +202,30 @@ module quadrilatero_systolic_array #(
     acc_mask = {(ALEN){1'b1}} << (ALEN * ff_k_counter_q);
     acc_raddr_o          = acc_reg_q                 ;
     acc_rrowaddr_o       = ff_counter_q + (ff_row_counter_q * N_ROWS)       ;
+    acc_rdata_shifted    = (acc_rdata_i >> ALEN * ff_k_counter_q);
+    res_rdata_shifted    = (res_wdata_o >> ALEN * ff_k_counter_q);
     acc_rdata_masked     = sa_input_id_o == sa_output_id_o && acc_rrowaddr_o == res_wrowaddr_o?
-                           (res_wdata_o >> ALEN * ff_k_counter_q)[ALEN-1:0] : (acc_rdata_i >> ALEN * ff_k_counter_q)[ALEN-1:0]; //TODO fix
+                           res_rdata_shifted[ALEN-1:0] : acc_rdata_shifted[ALEN-1:0]; //TODO fix
     acc_rdata_ready_o    = (ff_state_q != FF_IDLE) &~ mask_req   ;
     acc_rlast_o          = '0  ;
 
     // Accumulator Out Write Register Port
     res_waddr_o         = dest_reg_q                ;
     res_wrowaddr_o      = dr_counter_q + (dr_row_counter_q * N_ROWS)       ; 
-    res_wdata_o         = res_wdata_buffer_q | res_wdata_partial << ALEN * dr_k_counter_q;
-    res_we_o            = (dr_state_q == DR_ACTIVE)  &~ mask_req  ;
+    res_wdata_o         = {res_wdata_partial, res_wdata_buffer_q[dr_counter_q]};
+    res_we_o            = (dr_state_q == DR_ACTIVE || last_dr_write == 1'b1)  &~ mask_req;
     res_wlast_o         = (dr_state_q != DR_IDLE) && (dr_it_counter_q == (K-1) && dr_k_counter_q == (K-1));
+  end
+
+  always_comb begin : weight_buffer_block
+    res_wdata_buffer_d = res_wdata_buffer_q;
+    if(dr_state_q != DR_IDLE) begin
+      if(dr_k_counter_q == K-1) begin
+        res_wdata_buffer_d[dr_counter_q] = '0; //resetting the buffer
+      end else begin
+        res_wdata_buffer_d[dr_counter_q] = res_wdata_buffer_q[dr_counter_q] | (res_wdata_partial << ALEN*dr_k_counter_q);
+      end  
+    end
   end
 
   always_comb begin: finished_signal
@@ -218,14 +238,13 @@ module quadrilatero_systolic_array #(
   end
 
   always_comb begin: ctrl_block
-    res_wdata_buffer_d = res_wdata_buffer_q;
     valid = weight_rdata_valid_i & data_rdata_valid_i & acc_rdata_valid_i;
-    if((ff_state_q == FF_IDLE) && (fs_state_q != FS_ACTIVE) && (dr_state_q != DR_ACTIVE)) begin
+    if((ff_state_q == FF_IDLE) && (fs_state_q != FS_ACTIVE) && (dr_state_q == DR_IDLE)) begin
       clear = 1'b1;
     end else begin
       clear = 1'b0;
     end
-    if((ff_state_q != FF_IDLE && valid == 1'b1) || (fs_state_q == FS_ACTIVE) || (dr_state_q == DR_ACTIVE)) begin
+    if((ff_state_q != FF_IDLE && valid == 1'b1) || (fs_state_q == FS_ACTIVE) || (dr_state_q != DR_IDLE)) begin
       pump = 1'b1;
     end else begin
       pump = 1'b0;
@@ -289,16 +308,16 @@ module quadrilatero_systolic_array #(
             sa_ctrl_d = sa_ctrl_i;
             id_ff_d = id_i; 
           end else begin
-            if(ff_row_counter_q == RegLastRow-1) begin
-              ff_row_counter_d = '0;
-              if(ff_k_counter_q == (K-1)) begin
-                ff_k_counter_d = '0;
+            if(ff_k_counter_q == K-1) begin
+              ff_k_counter_d = '0;
+              if(ff_row_counter_q == (RegLastRow-1)) begin
+                ff_row_counter_d = '0;
                 ff_it_counter_d = ff_it_counter_q + 1;
               end else begin
-                ff_k_counter_d = ff_k_counter_q + 1;
+                ff_row_counter_d = ff_row_counter_q + 1;
               end
             end else begin
-              ff_row_counter_d = ff_row_counter_q + 1;
+              ff_k_counter_d = ff_k_counter_q + 1;
             end
           end
         end
@@ -375,6 +394,7 @@ module quadrilatero_systolic_array #(
     dr_k_counter_d = dr_k_counter_q;
     dr_it_counter_d = dr_it_counter_q;
     dr_row_counter_d = dr_row_counter_q;
+    last_dr_write = 1'b0;
 
     dest_reg_d = dest_reg_q;
     id_dr_d = id_dr_q;
@@ -396,46 +416,66 @@ module quadrilatero_systolic_array #(
           dr_counter_d = '0;
           dr_state_d = DR_IDLE;
         end else begin
-          if(dr_counter_q == LastRow) begin
-            if(res_wready_i == 1'b0) begin
-              dr_state_d = dr_state_q; //stall the pipeline
-            end else begin
+          if(res_wready_i == 1'b0) begin
+            dr_state_d = dr_state_q;
+          end else begin
+            if(dr_counter_q == LastRow) begin
+              
               dr_counter_d = '0;
+              //update DR counters
+              if(dr_it_counter_q == (K-1) && dr_row_counter_q == (RegLastRow - 1) && dr_k_counter_q == (K-1)) begin
+                dr_it_counter_d = '0;
+                dr_row_counter_d = '0;
+                dr_k_counter_d = '0;
+              end else begin
+                if(dr_k_counter_q == K-1) begin
+                  dr_k_counter_d = '0;
+                  if(dr_row_counter_q == (RegLastRow-1)) begin
+                    dr_row_counter_d = '0;
+                    dr_it_counter_d = dr_it_counter_q + 1;
+                  end else begin
+                    dr_row_counter_d = dr_row_counter_q + 1;
+                  end
+                end else begin
+                  dr_k_counter_d = dr_k_counter_q + 1;
+                end
+              end
               if(fs_state_q == FS_LAST) begin //stay in the active mode, load new inputs (fs_counter_d == LastRow - 1 ) && (fs_counter_q == LastRow - 2)
                 dr_state_d = DR_ACTIVE;
                 dest_reg_d = acc_fs_q;
                 id_dr_d = id_fs_q;
-                //update DR counters
-                if(dr_it_counter_q == (K-1) && dr_row_counter_q == (RegLastRow - 1) && dr_k_counter_q == (K-1)) begin
-                  dr_it_counter_d = '0;
-                  dr_row_counter_d = '0;
-                  dr_k_counter_d = '0;
-                end else begin
-                  if(dr_row_counter_q == RegLastRow-1) begin
-                    dr_row_counter_d = '0;
-                    if(dr_k_counter_q == (K-1)) begin
-                      dr_k_counter_d = '0;
-                      dr_it_counter_d = dr_it_counter_q + 1;
-                    end else begin
-                      dr_k_counter_d = dr_k_counter_q + 1;
-                    end
-                  end else begin
-                    dr_row_counter_d = dr_row_counter_q + 1;
-                  end
-                end
               end
-              if(fs_state_q == FS_IDLE) begin
-                dr_state_d = DR_DONE;
+                if(fs_state_q == FS_IDLE) begin
+                  dr_state_d = DR_DONE;
               end 
-            end 
-          end else begin
-            dr_counter_d = dr_counter_q + 1;
+            end else begin
+              dr_counter_d = dr_counter_q + 1;
+            end
           end
         end
         
       end
       DR_DONE: begin 
-        dr_state_d = DR_IDLE;
+        if((fs_state_q == FS_IDLE && dr_it_counter_q == (K-1) && dr_row_counter_q == (RegLastRow-1) && dr_k_counter_q == (K-1))) begin
+          last_dr_write = 1'b1;
+          if(res_wready_i == 1'b0) begin
+            dr_state_d = dr_state_q; //stall
+          end else begin
+            dr_state_d = DR_DONE;
+            if(dr_counter_q == LastRow) begin
+              dest_reg_d = acc_fs_q;
+              id_dr_d = id_fs_q;
+              dr_it_counter_d = '0;
+              dr_row_counter_d = '0;
+              dr_k_counter_d = '0;
+              dr_state_d = DR_IDLE;
+            end else begin
+              dr_counter_d = dr_counter_q + 1;
+            end 
+          end
+        end else begin
+          dr_state_d = DR_IDLE;
+        end
       end
       default: begin
         dr_state_d = DR_IDLE;

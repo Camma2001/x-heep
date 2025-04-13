@@ -132,7 +132,8 @@ module quadrilatero_lsu #(
   end
   
   always_comb begin : ctrl_block
-    terminate         = (|rows_q == '0 && |cols_q == '0 && data_gnt_i && data_req_o && (lsu_state_q == LSU_RUNNING) && (!last_i || write_i)); // !last_i only for RLEN/LLEN = 2, in other cases work with access counter
+    terminate         = ((rows_q == 'b1 && last_i && !write_i)  
+                        && |cols_q == '0 && data_gnt_i && data_req_o && (lsu_state_q == LSU_RUNNING)); //absolutely ugly
     load_fifo_valid_o = rd_valid_d;
     busy_o            = (lsu_state_q == LSU_RUNNING) & ~terminate;
     terminate_o       = terminate;
@@ -141,8 +142,8 @@ module quadrilatero_lsu #(
   always_comb begin : addr_block
     src_ptr_inc = DATA_WIDTH / 8;
     addr_op2    = (cols_q == '0)      ? stride_i  : src_ptr_inc;
-    addr        = (start_i)  ? ((src_ptr_i == ptr_q) ? ptr_q + addr_op2 : src_ptr_i) : ((write_i && !data_we_q)? ptr_q : ptr_q + addr_op2); //what happens when 2 loads don't load from subsequent addresses?
-    ptr_d       = ((data_gnt_i && data_req_o) || start_i) ? addr : ptr_q; 
+    addr        = (start_i)  ? src_ptr_i : ptr_q + addr_op2; // || ((rows_q == rows_i - 1) && (cols_q == cols_i - 1)) && (access_counter_match_i == 1'b0)
+    ptr_d       = (data_gnt_i && data_req_o) ? addr : ptr_q; 
   end
 
   always_comb begin : counters_block 
@@ -232,7 +233,7 @@ module quadrilatero_lsu #(
 
     rd_valid_d     = (rvalid & ~rd_valid_q)      ? 1'b1 :  
                      (load_fifo_output_pop_i & 
-                      load_fifo_empty & ~data_gnt_i) ? 1'b0 : rd_valid_q;
+                      load_fifo_empty & ~rvalid) ? 1'b0 : rd_valid_q;
 
     rd_head_d      = (load_fifo_output_pop_i & load_fifo_empty & rvalid) ||
                      (rvalid & ~rd_valid_q)                                  ? load_fifo_input    :

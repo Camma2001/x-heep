@@ -125,8 +125,8 @@ module quadrilatero_register_lsu #(
   logic [$clog2(NumAccesses)-1:0] access_counter_d;
   logic [$clog2(NumAccesses)-1:0] access_counter_q;
 
-  logic [quadrilatero_pkg::RLEN-1:0] load_row_buffer_d;
-  logic [quadrilatero_pkg::RLEN-1:0] load_row_buffer_q;
+  logic [(quadrilatero_pkg::RLEN-LLEN)-1:0] load_row_buffer_d;
+  logic [(quadrilatero_pkg::RLEN-LLEN)-1:0] load_row_buffer_q;
 
   logic [quadrilatero_pkg::RLEN-1:0] store_mask;
   logic [quadrilatero_pkg::RLEN-1:0] load_mask;
@@ -145,7 +145,7 @@ module quadrilatero_register_lsu #(
     waddr_o       = lsu_state_q == LSU_IDLE? waddr_d : waddr_q;
     wrowaddr_o    = counter_q       ;
     load_row_buffer_d = (load_row_buffer_q & ~load_mask) | (load_fifo_data << (LLEN * access_counter_q));
-    wdata_o       = load_row_buffer_d & ~data_mask; //watch out with load_row_buffer_d instead of load_row_buffer_q
+    wdata_o       = {load_fifo_data, load_row_buffer_q} & ~data_mask; //watch out with load_row_buffer_d instead of load_row_buffer_q
     
   end
 
@@ -164,7 +164,7 @@ module quadrilatero_register_lsu #(
     start  = (start_i | start_q) & lsu_ready;
     busy_o = (write_i ? busy_d : busy) | start_q; 
     
-    stride  = (start) ? stride_i  : stride_q;
+    stride  = (start) ? (stride_i / NumAccesses)  : stride_q;
     src_ptr = (start) ? address_i : src_ptr_q;
   end
 
@@ -175,7 +175,7 @@ module quadrilatero_register_lsu #(
     start_d =  start              ? 1'b0 : 
               (start_q | start_i) ? 1'b1 : start_q;
 
-    stride_d   = (start) ? stride_i  : stride_q ;
+    stride_d   = (start) ? (stride_i / NumAccesses)  : stride_q ;
     src_ptr_d  = (start) ? address_i : src_ptr_q;
 
     busy_d = (write_i && (counter_q == LastRow) && rdata_valid_i && rlast_o) ? 1'b0 :
@@ -382,6 +382,7 @@ module quadrilatero_register_lsu #(
       .busy_o                       (busy                       ),
       .terminate_o                  (terminate                  ),
       .last_i                       (wlast_o | rlast_o),
+      .access_counter_match_i             (access_counter_d == access_counter_q),
 
       // Address
       .src_ptr_i                    (src_ptr                    ),
