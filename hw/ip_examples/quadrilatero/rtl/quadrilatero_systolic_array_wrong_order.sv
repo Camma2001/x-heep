@@ -181,7 +181,7 @@ module quadrilatero_systolic_array #(
   always_comb begin: rf_block
     // Weight Read Register Port
     weight_mask = {(ALEN){1'b1}} << (ALEN * ff_k_counter_q);
-    weight_base_row      = N_ROWS * ff_it_counter_q;
+    weight_base_row = (quadrilatero_pkg::RLEN / DATA_WIDTH) - (N_ROWS * (ff_it_counter_q + 1));
     weight_raddr_o       = weight_reg_q              ;
     weight_rrowaddr_o    = ff_counter_q  + weight_base_row;    
     weight_rdata_shifted = (weight_rdata_i >> ALEN * ff_k_counter_q);      
@@ -223,7 +223,7 @@ module quadrilatero_systolic_array #(
       if(dr_k_counter_q == K-1) begin
         res_wdata_buffer_d[dr_counter_q] = '0; //resetting the buffer
       end else begin
-        res_wdata_buffer_d[dr_counter_q] = res_wdata_partial;
+        res_wdata_buffer_d[dr_counter_q] = res_wdata_buffer_q[dr_counter_q] | (res_wdata_partial << ALEN*dr_k_counter_q);
       end  
     end
   end
@@ -308,16 +308,16 @@ module quadrilatero_systolic_array #(
             sa_ctrl_d = sa_ctrl_i;
             id_ff_d = id_i; 
           end else begin
-            if(ff_row_counter_q == RegLastRow-1) begin
-              ff_row_counter_d = '0;
-              if(ff_k_counter_q == (K-1)) begin
-                ff_k_counter_d = '0;
+            if(ff_k_counter_q == K-1) begin
+              ff_k_counter_d = '0;
+              if(ff_row_counter_q == (RegLastRow-1)) begin
+                ff_row_counter_d = '0;
                 ff_it_counter_d = ff_it_counter_q + 1;
               end else begin
-                ff_k_counter_d = ff_k_counter_q + 1;
+                ff_row_counter_d = ff_row_counter_q + 1;
               end
             end else begin
-              ff_row_counter_d = ff_row_counter_q + 1;
+              ff_k_counter_d = ff_k_counter_q + 1;
             end
           end
         end
@@ -428,16 +428,16 @@ module quadrilatero_systolic_array #(
                 dr_row_counter_d = '0;
                 dr_k_counter_d = '0;
               end else begin
-                if(dr_row_counter_q == RegLastRow-1) begin
-                  dr_row_counter_d = '0;
-                  if(dr_k_counter_q == (K-1)) begin
-                    dr_k_counter_d = '0;
+                if(dr_k_counter_q == K-1) begin
+                  dr_k_counter_d = '0;
+                  if(dr_row_counter_q == (RegLastRow-1)) begin
+                    dr_row_counter_d = '0;
                     dr_it_counter_d = dr_it_counter_q + 1;
                   end else begin
-                    dr_k_counter_d = dr_k_counter_q + 1;
+                    dr_row_counter_d = dr_row_counter_q + 1;
                   end
                 end else begin
-                  dr_row_counter_d = dr_row_counter_q + 1;
+                  dr_k_counter_d = dr_k_counter_q + 1;
                 end
               end
               if(fs_state_q == FS_LAST) begin //stay in the active mode, load new inputs (fs_counter_d == LastRow - 1 ) && (fs_counter_q == LastRow - 2)

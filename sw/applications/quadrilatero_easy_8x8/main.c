@@ -180,22 +180,23 @@ int main()
 
 void  __attribute__ ((noinline))  matrixMul_easy(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift)
 {
-    asm volatile("addi	sp, sp, -0x30           "                            );   // 
-    asm volatile("sw	s0 , 0x2c(sp)           "                            );   // 
-    asm volatile("sw	s1 , 0x28(sp)           "                            );   // 
-    asm volatile("sw	s2 , 0x24(sp)           "                            );   // 
-    asm volatile("sw	s3 , 0x20(sp)           "                            );   // 
-    asm volatile("sw	s4 , 0x1c(sp)           "                            );   // 
-    asm volatile("sw	s5 , 0x18(sp)           "                            );   // 
-    asm volatile("sw	s6 , 0x14(sp)           "                            );   // 
-    asm volatile("sw	s7 , 0x10(sp)           "                            );   // 
-    asm volatile("sw	s8 , 0x0c(sp)           "                            );   // 
-    asm volatile("sw	s9 , 0x08(sp)           "                            );   // 
-    asm volatile("sw	s10, 0x04(sp)           "                            );   // 
-    asm volatile("sw	s11, 0x00(sp)           "                            );   // 
+  //  asm volatile("addi	sp, sp, -0x30           "                            );   // 
+    // asm volatile("sw	s0 , 0x2c(sp)           "                            );   // 
+    // asm volatile("sw	s1 , 0x28(sp)           "                            );   // 
+    // asm volatile("sw	s2 , 0x24(sp)           "                            );   // 
+    // asm volatile("sw	s3 , 0x20(sp)           "                            );   // 
+    // asm volatile("sw	s4 , 0x1c(sp)           "                            );   // 
+    // asm volatile("sw	s5 , 0x18(sp)           "                            );   // 
+    // asm volatile("sw	s6 , 0x14(sp)           "                            );   // 
+    // asm volatile("sw	s7 , 0x10(sp)           "                            );   // 
+    // asm volatile("sw	s8 , 0x0c(sp)           "                            );   // 
+    // asm volatile("sw	s9 , 0x08(sp)           "                            );   // 
+    // asm volatile("sw	s10, 0x04(sp)           "                            );   // 
+    // asm volatile("sw	s11, 0x00(sp)           "                            );   // 
 
     //--------------------------------------------------------------------------------
     // asm volatile("addi    a7,x0, 4              "                            );   // a7  = WIDTH;
+    
     asm volatile("addi     a6,x0,32              "                            );   // a6  = N* 2**SIMD_SHIFT
     asm volatile("addi    t0,x0, 0              "                            );   // t0  = m0 =0;
     asm volatile("addi    s3,x0, 32              "                            );   // s3  = K*4;
@@ -216,7 +217,7 @@ void  __attribute__ ((noinline))  matrixMul_easy(DATA_IN_t* addrA,DATA_IN_t* add
     asm volatile("addi    t2,x0,16              "                            );   // t2  = k0 = 16;
     asm volatile("slli    t5,t1, 2              "                            );   // t5  = n0*4;
     asm volatile("mld.w   m0, (s1) , s3         "                            );   // m0  = A[s1] 
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mld.w   m4, (s0), s3                    "                            );   // m4  = 0;
     asm volatile("mul     s9,s3,t1              "                            );   // s9  = K*4*n0;
     asm volatile("add     s9 ,%0,s9             " :: "r" (addrB)             );   // s9  = startAddrB0 = addrB + K*4*n0 
     asm volatile("mld.w   m1, (s9) , a6         "                            );   // m1  = B[s9]
@@ -230,20 +231,27 @@ void  __attribute__ ((noinline))  matrixMul_easy(DATA_IN_t* addrA,DATA_IN_t* add
     
     asm volatile("add     t0,t0, 16              "                             );   // t0 = m0 +=2*WIDTH;
   //--------------------------------------------------------------------------------
-
-    asm volatile("lw	s0 , 0x2c(sp)           "                            );   // 
-    asm volatile("lw	s1 , 0x28(sp)           "                            );   // 
-    asm volatile("lw	s2 , 0x24(sp)           "                            );   // 
-    asm volatile("lw	s3 , 0x20(sp)           "                            );   // 
-    asm volatile("lw	s4 , 0x1c(sp)           "                            );   // 
-    asm volatile("lw	s5 , 0x18(sp)           "                            );   // 
-    asm volatile("lw	s6 , 0x14(sp)           "                            );   // 
-    asm volatile("lw	s7 , 0x10(sp)           "                            );   // 
-    asm volatile("lw	s8 , 0x0c(sp)           "                            );   // 
-    asm volatile("lw	s9 , 0x08(sp)           "                            );   // 
-    asm volatile("lw	s10, 0x04(sp)           "                            );   // 
-    asm volatile("lw	s11, 0x00(sp)           "                            );   // 
-    asm volatile("addi	sp, sp, 0x30            "                            );   //
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    // asm volatile("lw	s0 , 0x2c(sp)           "                            );   // 
+    // asm volatile("lw	s1 , 0x28(sp)           "                            );   // 
+    // asm volatile("lw	s2 , 0x24(sp)           "                            );   // 
+    // asm volatile("lw	s3 , 0x20(sp)           "                            );   // 
+    // asm volatile("lw	s4 , 0x1c(sp)           "                            );   // 
+    // asm volatile("lw	s5 , 0x18(sp)           "                            );   // 
+    // asm volatile("lw	s6 , 0x14(sp)           "                            );   // 
+    // asm volatile("lw	s7 , 0x10(sp)           "                            );   // 
+    // asm volatile("lw	s8 , 0x0c(sp)           "                            );   // 
+    // asm volatile("lw	s9 , 0x08(sp)           "                            );   // 
+    // asm volatile("lw	s10, 0x04(sp)           "                            );   // 
+    // asm volatile("lw	s11, 0x00(sp)           "                            );   // 
+  //  asm volatile("addi	sp, sp, 0x30            "                            );   //
 
 } 
 

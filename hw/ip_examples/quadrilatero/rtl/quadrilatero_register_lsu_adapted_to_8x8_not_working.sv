@@ -64,7 +64,7 @@ module quadrilatero_register_lsu #(
 
 );
 
-  localparam MAX_EL_PER_ROW = quadrilatero_pkg::RLEN / LLEN;
+  localparam MAX_EL_PER_ROW = LLEN / BUS_WIDTH;
   localparam LastRow = $clog2(N_ROWS)'(N_ROWS - 1);
   localparam NumAccesses = quadrilatero_pkg::RLEN / LLEN;
   
@@ -382,7 +382,7 @@ module quadrilatero_register_lsu #(
       .busy_o                       (busy                       ),
       .terminate_o                  (terminate                  ),
       .last_i                       (wlast_o | rlast_o),
-      //.access_counter_match_i             (access_counter_d == access_counter_q),
+      .access_counter_match_i             (access_counter_d == access_counter_q),
 
       // Address
       .src_ptr_i                    (src_ptr                    ),
