@@ -169,14 +169,13 @@ int main()
     CSR_READ(CSR_REG_MCYCLE, &cycles);
 
     //check results
-    //errors = check_results(K_size,N_size,M_size);
-    errors = 17;
+    errors = check_results(K_size,N_size,M_size);
 
     PRINTF("program finished with %d errors and %d cycles\n\r", errors, cycles);
-    PRINTF("MATRIX C:\n\r");
-    print_matrix(addrC, M_size, N_size);
-    PRINTF("MATRIX EXP:\n\r");
-    print_matrix((DATA_OUT_t *) MAT_EXP, M_size, N_size);
+    // PRINTF("MATRIX C:\n\r");
+    // print_matrix(addrC, M_size, N_size);
+    // PRINTF("MATRIX EXP:\n\r");
+    // print_matrix((DATA_OUT_t *) MAT_EXP, M_size, N_size);
     return errors;
 }
 
@@ -401,7 +400,7 @@ void  __attribute__ ((noinline))  matrixMul_8x8(DATA_IN_t* addrA,DATA_IN_t* addr
 // }
 
 // //unrolling the m/n loops -> way to go
-void __attribute__ ((noinline))  matrixMul_16x16_C(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift){
+/*void __attribute__ ((noinline))  matrixMul_16x16_C(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift){
   uint32_t K_4 = K*4;
   uint32_t N_4 = N*4;
   for(int m = 0; m < M; m+= 16){
@@ -435,7 +434,7 @@ void __attribute__ ((noinline))  matrixMul_16x16_C(DATA_IN_t* addrA,DATA_IN_t* a
 
       }
   }
-}
+} */
 void  __attribute__ ((noinline))  matrixMul_16x16(DATA_IN_t* addrA,DATA_IN_t* addrB,DATA_OUT_t* addrC, int K, int N, int M, int shift)
 {
     asm volatile("addi	sp, sp, -0x30           "                            );   // 
@@ -523,6 +522,57 @@ void  __attribute__ ((noinline))  matrixMul_16x16(DATA_IN_t* addrA,DATA_IN_t* ad
     asm volatile("add     t0,t0, 16              "                             );   // t0 = m0 +=2*WIDTH;
     asm volatile("blt     t0, %0, loopM_start16x16" :: "r" (M)                 );   // endwhile(m0<M)
   //--------------------------------------------------------------------------------
+
+  //--------------------------------------------------------------------------------
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+
 
     asm volatile("lw	s0 , 0x2c(sp)           "                            );   // 
     asm volatile("lw	s1 , 0x28(sp)           "                            );   // 

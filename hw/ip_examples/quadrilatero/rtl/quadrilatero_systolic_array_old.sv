@@ -117,7 +117,7 @@ module quadrilatero_systolic_array #(
   logic [quadrilatero_pkg::RLEN-1:0] data_mask;
   logic [quadrilatero_pkg::RLEN-1:0] weight_mask;
   logic [quadrilatero_pkg::RLEN-1:0] acc_mask;
-  logic [quadrilatero_pkg::RLEN-1:0] res_mask;
+  //logic [quadrilatero_pkg::RLEN-1:0] res_mask;
 
   logic [ALEN-1:0] data_rdata_masked;
   logic [quadrilatero_pkg::RLEN-1:0] data_rdata_shifted;
@@ -127,8 +127,8 @@ module quadrilatero_systolic_array #(
   logic [quadrilatero_pkg::RLEN-1:0] acc_rdata_shifted;
   logic [ALEN-1:0] res_wdata_partial;
   logic [quadrilatero_pkg::RLEN-1:0] res_rdata_shifted;
-  logic [(N_ROWS*K)-1:0][quadrilatero_pkg::RLEN-1:0] res_wdata_buffer_d;
-  logic [(N_ROWS*K)-1:0][quadrilatero_pkg::RLEN-1:0]res_wdata_buffer_q;
+  logic [N_ROWS-1:0][(quadrilatero_pkg::RLEN - ALEN)-1:0] res_wdata_buffer_d;
+  logic [N_ROWS-1:0][(quadrilatero_pkg::RLEN - ALEN)-1:0]res_wdata_buffer_q;
 
 
   logic                           valid              ;
@@ -212,9 +212,20 @@ module quadrilatero_systolic_array #(
     // Accumulator Out Write Register Port
     res_waddr_o         = dest_reg_q                ;
     res_wrowaddr_o      = dr_counter_q + (dr_row_counter_q * N_ROWS)       ; 
-    res_wdata_o         = res_wdata_buffer_d[res_wrowaddr_o]; 
+    res_wdata_o         = {res_wdata_buffer_q[dr_counter_q], res_wdata_partial}; // TODO: fix this, probably need a bigger buffer to make life easier.
     res_we_o            = (dr_state_q == DR_ACTIVE || last_dr_write == 1'b1)  &~ mask_req;
     res_wlast_o         = (dr_state_q != DR_IDLE) && (dr_it_counter_q == (K-1) && dr_k_counter_q == (K-1));
+  end
+
+  always_comb begin : weight_buffer_block
+    res_wdata_buffer_d = res_wdata_buffer_q;
+    if(dr_state_q != DR_IDLE) begin
+      if(dr_k_counter_q == K-1) begin
+        res_wdata_buffer_d[dr_counter_q] = '0; //resetting the buffer
+      end else begin
+        res_wdata_buffer_d[dr_counter_q] = res_wdata_partial;
+      end  
+    end
   end
 
   always_comb begin: finished_signal
@@ -471,42 +482,9 @@ module quadrilatero_systolic_array #(
       end
       
     endcase
+    
+
   end
-
-  always_comb begin : weight_buffer_block
-  res_wdata_buffer_d = res_wdata_buffer_q;
-  res_mask = {ALEN{1'b1}} << (ALEN*((K-1)-dr_k_counter_q));
-    if(ff_state_q != FF_IDLE) begin
-    res_wdata_buffer_d[acc_rrowaddr_o] = acc_rdata_i;
-    end
-    if(dr_state_q != DR_IDLE) begin  
-      res_wdata_buffer_d[res_wrowaddr_o] = (res_wdata_buffer_q[res_wrowaddr_o] & ~res_mask) | (res_wdata_partial << (ALEN*((K-1)-dr_k_counter_q)));
-    end
-  end
-
-  // fifo_v3 #(
-  //   .FALL_THROUGH (1'b0       ),
-  //   .DEPTH        (5      ), //TODO change 
-  //   .DATA_WIDTH   (quadrilatero_pkg::RLEN )
-  // ) acc_buffer_i (
-  //   .clk_i                             ,
-  //   .rst_ni                            ,
-  //   .flush_i      (1'b0               ),
-  //   .testmode_i   (1'b0               ),
-
-  //   // status flags
-  //   .full_o       (acc_fifo_full     ),
-  //   .empty_o      (acc_fifo_empty    ),
-  //   .usage_o      (acc_fifo_usage    ),
-  //   // as long as the queue is not full we can push new data
-  //   .data_i       (acc_rdata_i    ),
-  //   .push_i       (pump     ),
-  //   // as long as the queue is not empty we can pop new elements
-  //   .data_o       (acc_fifo_wdata ),
-  //   .pop_i        (pump & ~acc_fifo_empty      )
-  // );
-  //end
-
 
   quadrilatero_skewer #(
       .MESH_WIDTH(MESH_WIDTH),

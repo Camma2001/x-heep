@@ -168,10 +168,10 @@ int main()
     errors = check_results(K_size,N_size,M_size);
 
     PRINTF("program finished with %d errors and %d cycles\n\r", errors, cycles);
-    PRINTF("MATRIX C:\n\r");
-    print_matrix(addrC, M_size, N_size);
-    PRINTF("MATRIX EXP:\n\r");
-    print_matrix((DATA_OUT_t *) MAT_EXP, M_size, N_size);
+    // PRINTF("MATRIX C:\n\r");
+    // print_matrix(addrC, M_size, N_size);
+    // PRINTF("MATRIX EXP:\n\r");
+    // print_matrix((DATA_OUT_t *) MAT_EXP, M_size, N_size);
     return errors;
 }
 
@@ -231,6 +231,126 @@ void  __attribute__ ((noinline))  matrixMul_easy(DATA_IN_t* addrA,DATA_IN_t* add
     
     asm volatile("add     t0,t0, 16              "                             );   // t0 = m0 +=2*WIDTH;
   //--------------------------------------------------------------------------------
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
+    asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
     asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
     asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
     asm volatile("mzero     m7              "                            );   // a6  = N* 2**SIMD_SHIFT
