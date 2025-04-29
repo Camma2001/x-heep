@@ -8,7 +8,7 @@ package quadrilatero_pkg;
   parameter int unsigned N_REGS                 =   8;
   parameter int unsigned DATA_WIDTH             =  32;
   parameter int unsigned BUS_WIDTH              = 128;
-  parameter int unsigned MESH_WIDTH             =   8;
+  parameter int unsigned MESH_WIDTH             =   8;  //change register size
   parameter int unsigned SA_MESH_WIDTH          =   4;
   parameter int unsigned NUM_EXEC_UNITS         =   3;  // change me to add units
   parameter int unsigned MAX_NUM_READ_OPERANDS  =   3;

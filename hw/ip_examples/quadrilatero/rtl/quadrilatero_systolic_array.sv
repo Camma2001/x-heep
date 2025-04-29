@@ -473,7 +473,7 @@ module quadrilatero_systolic_array #(
     endcase
   end
 
-  always_comb begin : weight_buffer_block
+  always_comb begin : res_buffer_block // if RLEN == ALEN we don't need the weight buffer
   res_wdata_buffer_d = res_wdata_buffer_q;
   res_mask = {ALEN{1'b1}} << (ALEN*((K-1)-dr_k_counter_q));
     if(ff_state_q != FF_IDLE) begin

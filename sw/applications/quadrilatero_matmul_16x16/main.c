@@ -524,54 +524,7 @@ void  __attribute__ ((noinline))  matrixMul_16x16(DATA_IN_t* addrA,DATA_IN_t* ad
   //--------------------------------------------------------------------------------
 
   //--------------------------------------------------------------------------------
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
-    asm volatile("mzero   m4                    "                            );   // m4  = 0;
+
 
 
     asm volatile("lw	s0 , 0x2c(sp)           "                            );   // 
