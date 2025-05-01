@@ -27,7 +27,6 @@ module quadrilatero_lsu #(
     input  logic                      write_i                     ,  // write transaction
     output logic                      busy_o                      ,  // lsu available
     output logic                      terminate_o                 ,  // lsu done
-    input  logic                      last_i                      ,
 
     // Address
     input  logic [              31:0] src_ptr_i                   ,  // base address

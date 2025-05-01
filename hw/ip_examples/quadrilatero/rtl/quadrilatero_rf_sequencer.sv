@@ -21,32 +21,32 @@ module quadrilatero_rf_sequencer #(
     input logic rst_ni,
 
     // Input from FUs
-    input  logic [READ_PORTS-1:0][$clog2(N_REGS)-1:0] raddr_i    ,
+    input  logic [READ_PORTS-1:0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] raddr_i    ,
     input  logic [READ_PORTS-1:0][$clog2(N_ROWS)-1:0] rrowaddr_i ,
-    output logic [READ_PORTS-1:0][RLEN-1:0]           rdata_o    ,
+    output logic [READ_PORTS-1:0][quadrilatero_pkg::LEN-1:0]           rdata_o    ,
     output logic [READ_PORTS-1:0]                     rvalid_o   ,
     input  logic [READ_PORTS-1:0]                     rlast_i    ,  // request finished (must be PULSE)
     input  logic [READ_PORTS-1:0]                     rready_i   ,  // request finished (must be PULSE)
     input  logic [READ_PORTS-1:0][xif_pkg::X_ID_WIDTH-1:0]     rd_id_i    ,
 
 
-    input logic  [WRITE_PORTS-1:0][$clog2(N_REGS)-1:0] waddr_i    ,
+    input logic  [WRITE_PORTS-1:0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_i    ,
     input logic  [WRITE_PORTS-1:0][$clog2(N_ROWS)-1:0] wrowaddr_i ,
-    input logic  [WRITE_PORTS-1:0][RLEN-1:0]           wdata_i    ,
+    input logic  [WRITE_PORTS-1:0][quadrilatero_pkg::LEN-1:0]           wdata_i    ,
     input logic  [WRITE_PORTS-1:0]                     we_i       ,
     input logic  [WRITE_PORTS-1:0]                     wlast_i    ,  // request finished (must be PULSE)
     output logic [WRITE_PORTS-1:0]                     wready_o   ,
     input  logic [WRITE_PORTS-1:0][xif_pkg::X_ID_WIDTH-1:0]     wr_id_i    ,
 
     // Outputs to RF
-    output logic [RF_READ_PORTS-1:0][$clog2(N_REGS)-1:0]  raddr_o    ,
+    output logic [RF_READ_PORTS-1:0][$clog2(quadrilatero_pkg::N_IREGS)-1:0]  raddr_o    ,
     output logic [RF_READ_PORTS-1:0][$clog2(N_ROWS)-1:0]  rrowaddr_o ,
-    input logic  [RF_READ_PORTS-1:0][RLEN-1:0]            rdata_i    ,
+    input logic  [RF_READ_PORTS-1:0][quadrilatero_pkg::LEN-1:0]            rdata_i    ,
 
 
-    output logic [RF_WRITE_PORTS-1:0][$clog2(N_REGS)-1:0] waddr_o    ,
+    output logic [RF_WRITE_PORTS-1:0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_o    ,
     output logic [RF_WRITE_PORTS-1:0][$clog2(N_ROWS)-1:0] wrowaddr_o ,
-    output logic [RF_WRITE_PORTS-1:0][RLEN-1:0]           wdata_o    ,
+    output logic [RF_WRITE_PORTS-1:0][quadrilatero_pkg::LEN-1:0]           wdata_o    ,
     output logic [RF_WRITE_PORTS-1:0]                     we_o       ,
 
 
@@ -60,34 +60,50 @@ module quadrilatero_rf_sequencer #(
     output logic [N_REGS-1:0] rw_queue_full_o
 );
 
-  logic  [N_REGS-1:0][N_ROWS-1:0] head_valid    ;
-  logic  [N_REGS-1:0][N_ROWS-1:0] rw_queue_empty;
-  logic  [N_REGS-1:0][N_ROWS-1:0] w_pop         ;
-  logic  [N_REGS-1:0][N_ROWS-1:0] r_pop         ;
-  logic  [N_REGS-1:0][N_ROWS-1:0] r_clr         ;
-  logic  [N_REGS-1:0][N_ROWS-1:0] rw_queue_pop  ;
-  logic  [N_REGS-1:0][N_ROWS-1:0] rw_queue_full ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] head_valid    ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] rw_queue_empty;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] w_pop         ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] r_pop         ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] r_clr         ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] rw_queue_pop  ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] rw_queue_full ;
 
   logic  [WRITE_PORTS-1:0] wr_gnt        ;
   logic  [WRITE_PORTS-1:0] wr_req        ;
   logic  [READ_PORTS -1:0] rd_req        ;  
   logic  [READ_PORTS -1:0] rd_gnt        ;
 
-  logic                      [N_REGS-1:0]               rw_queue_push ;
-  quadrilatero_pkg::rw_queue_t [N_REGS-1:0]               rw_queue_entry;
-  quadrilatero_pkg::rw_queue_t [N_REGS-1:0][N_ROWS-1:0]   rw_queue      ;
-  quadrilatero_pkg::rw_queue_t [N_REGS-1:0][N_ROWS-1:0]   scoreboard_d  ;
-  quadrilatero_pkg::rw_queue_t [N_REGS-1:0][N_ROWS-1:0]   scoreboard_q  ;
+  logic                      [quadrilatero_pkg::N_IREGS-1:0]               rw_queue_push ;
+  quadrilatero_pkg::rw_queue_t [quadrilatero_pkg::N_IREGS-1:0]               rw_queue_entry;
+  quadrilatero_pkg::rw_queue_t [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0]   rw_queue      ;
+  quadrilatero_pkg::rw_queue_t [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0]   scoreboard_d  ;
+  quadrilatero_pkg::rw_queue_t [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0]   scoreboard_q  ;
   genvar ii,hh;
 
-  assign rw_queue_pop     = w_pop | r_pop | ~head_valid; 
-  assign rw_queue_entry   = rw_queue_entry_i           ;
-  assign rw_queue_push    = rw_queue_push_i            ;
+  assign rw_queue_pop     = w_pop | r_pop | ~head_valid;
+  always_comb begin: rw_queue_block
+    rw_queue_entry = '0;
+    rw_queue_push = '0;
+    if(quadrilatero_pkg::N_TILES == 1) begin //technically this if is not needed
+      rw_queue_entry   = rw_queue_entry_i           ;
+      rw_queue_push    = rw_queue_push_i            ;
+    end else begin
+      for (int jj = 0; jj < quadrilatero_pkg::N_IREGS; jj++) begin
+        for (int ii = 0; ii < N_REGS ; ii++) begin
+          if(jj >> quadrilatero_pkg::TILE_ADDR == ii) begin
+            rw_queue_entry[jj] = rw_queue_entry_i[ii];
+            rw_queue_push[jj] = rw_queue_push_i[ii]; 
+          end
+        end
+      end
+    end
+  end
+  
 
-  logic  [N_REGS-1:0][N_ROWS-1:0] rw_queue_pop_fifo  ;
+  logic  [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0] rw_queue_pop_fifo  ;
   assign rw_queue_pop_fifo = rw_queue_pop & ~rw_queue_empty;
 
-  for (ii = 0; ii < N_REGS; ii++) begin: gen_fifo__regs
+  for (ii = 0; ii < quadrilatero_pkg::N_IREGS; ii++) begin: gen_fifo__regs
     for (hh = 0; hh < N_ROWS; hh++) begin: gen_fifo__rows
       fifo_v3 #(
           .FALL_THROUGH   (1'b1)                       ,
@@ -111,9 +127,9 @@ module quadrilatero_rf_sequencer #(
 
   always_comb begin: scoreboard_block
     rw_queue_full_o = '0;
-    for (int i = 0; i < N_REGS; i++) begin
+    for (int i = 0; i < quadrilatero_pkg::N_IREGS; i++) begin
       for (int h = 0; h < N_ROWS; h++) begin
-        rw_queue_full_o[i]  |= (rw_queue_full[i][h]);
+        rw_queue_full_o[i>>quadrilatero_pkg::TILE_ADDR]  |= (rw_queue_full[i][h]); //TODO: change this
 
       
         head_valid[i][h] = scoreboard_q[i][h].valid;

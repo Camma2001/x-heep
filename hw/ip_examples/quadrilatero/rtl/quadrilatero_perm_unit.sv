@@ -14,9 +14,9 @@ module quadrilatero_perm_unit #(
     input  logic                           rst_ni              ,
 
     // Register Write Port 
-    output logic [     $clog2(N_REGS)-1:0] waddr_o             ,
+    output logic [     $clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_o             ,
     output logic [     $clog2(N_ROWS)-1:0] wrowaddr_o          ,
-    output logic [               RLEN-1:0] wdata_o             ,
+    output logic [               quadrilatero_pkg::LEN-1:0] wdata_o             ,
     output logic                           we_o                ,
     output logic                           wlast_o             ,
     input  logic                           wready_i            ,  // to stall the request in case the port is busy
@@ -145,7 +145,7 @@ module quadrilatero_perm_unit #(
   end
 
 
-  assign waddr_o             = operand_reg_q              ;
+  assign waddr_o             = operand_reg_q              ; //TODO: fix
   assign wrowaddr_o          = counter_q                  ;
   assign wdata_o             = '0                         ;
   assign we_o                = write_started_q &~ mask_req;

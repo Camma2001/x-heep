@@ -221,11 +221,33 @@ void  __attribute__ ((noinline))  matrixMul_easy(DATA_IN_t* addrA,DATA_IN_t* add
     asm volatile("mul     s9,s3,t1              "                            );   // s9  = K*4*n0;
     asm volatile("add     s9 ,%0,s9             " :: "r" (addrB)             );   // s9  = startAddrB0 = addrB + K*4*n0 
     asm volatile("mld.w   m1, (s9) , a6         "                            );   // m1  = B[s9]
+
+    asm volatile("mld.w   m2, (s1) , s3         "                            );   // m0  = A[s1] 
+    asm volatile("mzero   m3                    "                            );   // m4  = 0;
+    asm volatile("mld.w   m5, (s9) , a6         "                            );   // m1  = B[s9]
     asm volatile("mul     s11,s3,t4             "                            );   // s11 = K*4*(n0+WIDTH);
     asm volatile(MACC(HEAD_LINE,4,1,0)                                                 );   // m4 += m1 * m0
+    asm volatile(MACC(HEAD_LINE,3,5,2)                                                 );   // m4 += m1 * m0
     asm volatile("add     s11,%0,s11            " :: "r" (addrB)             );   // s11 = startAddrB1 = addrB + K*4*(n0+WIDTH)
     asm volatile("add     s6,t5,0              "                            );   // s6  = startAddrC00 += n0*4
     asm volatile("mst.w   m4, (s0) , s4         "                            );   // m4  -> (s6) 
+    asm volatile("mst.w   m3, (s0) , s4         "                            );   // m4  -> (s6) 
+    asm volatile("mld.w   m0, (s1) , s3         "                            );   // m0  = A[s1] 
+    asm volatile("mld.w   m4, (s0), s3                    "                            );   // m4  = 0;
+    asm volatile("mul     s9,s3,t1              "                            );   // s9  = K*4*n0;
+    asm volatile("add     s9 ,%0,s9             " :: "r" (addrB)             );   // s9  = startAddrB0 = addrB + K*4*n0 
+    asm volatile("mld.w   m1, (s9) , a6         "                            );   // m1  = B[s9]
+
+    asm volatile("mld.w   m2, (s1) , s3         "                            );   // m0  = A[s1] 
+    asm volatile("mld.w   m3, (s0), s3                    "                            );   // m4  = 0;
+    asm volatile("mld.w   m5, (s9) , a6         "                            );   // m1  = B[s9]
+    asm volatile("mul     s11,s3,t4             "                            );   // s11 = K*4*(n0+WIDTH);
+    asm volatile(MACC(HEAD_LINE,4,1,0)                                                 );   // m4 += m1 * m0
+    asm volatile(MACC(HEAD_LINE,3,5,2)                                                 );   // m4 += m1 * m0
+    asm volatile("add     s11,%0,s11            " :: "r" (addrB)             );   // s11 = startAddrB1 = addrB + K*4*(n0+WIDTH)
+    asm volatile("add     s6,t5,0              "                            );   // s6  = startAddrC00 += n0*4
+    asm volatile("mst.w   m4, (s0) , s4         "                            );   // m4  -> (s6) 
+    asm volatile("mst.w   m3, (s0) , s4         "                            );   // m4  -> (s6)
     asm volatile("slli    t6,t4, 2              "                            );   // t6  = (n0+WIDTH)*4;
     asm volatile("add     s5,t6,s0              "                            );   // s5  = startAddrC01 += (n0+WIDTH)*4
     

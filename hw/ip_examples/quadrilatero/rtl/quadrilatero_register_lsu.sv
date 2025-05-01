@@ -31,17 +31,17 @@ module quadrilatero_register_lsu #(
     output logic[xif_pkg::X_ID_WIDTH-1:0] lsu_id_o            ,
 
     // Register Write Port for load unit
-    output logic [    $clog2(N_REGS)-1:0] waddr_o             ,
+    output logic [    $clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] wrowaddr_o          ,
-    output logic [quadrilatero_pkg::RLEN-1:0] wdata_o             ,
+    output logic [quadrilatero_pkg::LEN-1:0] wdata_o             ,
     output logic                          we_o                ,
     output logic                          wlast_o             ,
     input  logic                          wready_i            ,  // to stall the request in case the port is busy
 
     // Register Read Port for store unit
-    output logic [    $clog2(N_REGS)-1:0] raddr_o             ,
+    output logic [    $clog2(quadrilatero_pkg::N_IREGS)-1:0] raddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] rrowaddr_o          ,
-    input  logic [quadrilatero_pkg::RLEN-1:0] rdata_i             ,
+    input  logic [quadrilatero_pkg::LEN-1:0] rdata_i             ,
     input  logic                          rdata_valid_i       ,
     output logic                          rdata_ready_o       ,
     output logic                          rlast_o             ,
@@ -66,7 +66,7 @@ module quadrilatero_register_lsu #(
 
   localparam MAX_EL_PER_ROW = quadrilatero_pkg::RLEN / LLEN;
   localparam LastRow = $clog2(N_ROWS)'(N_ROWS - 1);
-  localparam NumAccesses = quadrilatero_pkg::RLEN / LLEN;
+  localparam NumCols = quadrilatero_pkg::RLEN / LLEN;
   
     typedef enum logic [1:0] {
     LSU_IDLE,
@@ -83,10 +83,8 @@ module quadrilatero_register_lsu #(
 
   logic [$clog2(N_ROWS)-1:0] counter_q;
   logic [$clog2(N_ROWS)-1:0] counter_d;
-  logic [$clog2(N_REGS)-1:0] waddr_q;
-  logic [$clog2(N_REGS)-1:0] waddr_d;
-  logic [$clog2(N_REGS)-1:0] raddr_q;
-  logic [$clog2(N_REGS)-1:0] raddr_d;
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_q; //TODO: change these
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_d;
 
 
   logic [LLEN-1:0] load_fifo_data;
@@ -122,14 +120,11 @@ module quadrilatero_register_lsu #(
   logic [              31:0] src_ptr   ;
   logic [              31:0] stride    ;
 
-  logic [$clog2(NumAccesses)-1:0] access_counter_d;
-  logic [$clog2(NumAccesses)-1:0] access_counter_q;
+  logic [$clog2(NumCols)-1:0] cols_counter_d;
+  logic [$clog2(NumCols)-1:0] cols_counter_q;
+  logic [$clog2(NumCols)-1:0] row_counter_d;
+  logic [$clog2(NumCols)-1:0] row_counter_q;
 
-  logic [(quadrilatero_pkg::RLEN-LLEN)-1:0] load_row_buffer_d;
-  logic [(quadrilatero_pkg::RLEN-LLEN)-1:0] load_row_buffer_q;
-
-  logic [quadrilatero_pkg::RLEN-1:0] store_mask;
-  logic [quadrilatero_pkg::RLEN-1:0] load_mask;
 
   assign mask_req     = (counter_q == LastRow) & finished_o & ~finished_ack_i;
   always_comb begin
@@ -140,31 +135,31 @@ module quadrilatero_register_lsu #(
 
   always_comb begin: write_to_RF
     data_mask     = '1 << (8 * n_bytes_cols_i);  // SPEC says to load zeros outside of rows and cols
-    load_mask     = ({{(quadrilatero_pkg::RLEN - LLEN){1'b0}}, {LLEN{1'b1}}}) << (LLEN * access_counter_q);
-    we_o          = load_fifo_data_available &~ mask_req; // && ((access_counter_q == NumAccesses -1) || (lsu_state_q == LSU_LOAD && !load_fifo_valid)); //last part is sketchy
+    we_o          = load_fifo_data_available &~ mask_req; 
     waddr_o       = lsu_state_q == LSU_IDLE? waddr_d : waddr_q;
     wrowaddr_o    = counter_q       ;
-    load_row_buffer_d = (load_row_buffer_q & ~load_mask) | (load_fifo_data << (LLEN * access_counter_q));
-    wdata_o       = {load_fifo_data, load_row_buffer_q} & ~data_mask; //watch out with load_row_buffer_d instead of load_row_buffer_q
+    wdata_o       = load_fifo_data & ~data_mask; 
     
   end
 
   always_comb begin: read_from_RF
-    store_mask = ({{(quadrilatero_pkg::RLEN - LLEN){1'b0}}, {LLEN{1'b1}}}) << (LLEN * access_counter_q);
     rdata_ready_o = write_i & store_fifo_space_available &~ load_fifo_data_available &~ mask_req;
     rrowaddr_o    = counter_q       ;
-    raddr_o       = operand_reg_i;//lsu_state_q == LSU_IDLE? raddr_d : raddr_q;
+    raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]   = operand_reg_i; 
+    if(quadrilatero_pkg::TILE_ADDR != 0) begin
+      raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_q, cols_counter_q};
+    end
   end
 
   always_comb begin: lsu_ctrl_block
     load_fifo_pop   = wready_i;
-    store_fifo_data = (rdata_i & store_mask) >> (LLEN * access_counter_q);
+    store_fifo_data = rdata_i;
     store_fifo_push = rdata_ready_o && rdata_valid_i;
     lsu_ready = store_fifo_empty | (write_i &~ load_fifo_data_available &~ lsu_busy_q);
     start  = (start_i | start_q) & lsu_ready;
     busy_o = (write_i ? busy_d : busy) | start_q; 
     
-    stride  = (start) ? (stride_i / NumAccesses)  : stride_q;
+    stride  = (start) ? (stride_i / NumCols)  : stride_q;
     src_ptr = (start) ? address_i : src_ptr_q;
   end
 
@@ -175,7 +170,7 @@ module quadrilatero_register_lsu #(
     start_d =  start              ? 1'b0 : 
               (start_q | start_i) ? 1'b1 : start_q;
 
-    stride_d   = (start) ? (stride_i / NumAccesses)  : stride_q ;
+    stride_d   = (start) ? (stride_i / NumCols)  : stride_q ;
     src_ptr_d  = (start) ? address_i : src_ptr_q;
 
     busy_d = (write_i && (counter_q == LastRow) && rdata_valid_i && rlast_o) ? 1'b0 :
@@ -184,36 +179,38 @@ module quadrilatero_register_lsu #(
   always_comb begin: fsm_block
   lsu_state_d = lsu_state_q;
   counter_d = counter_q;
-  access_counter_d = access_counter_q;
-  rlast_o = 1'b0;
-  wlast_o = 1'b0;
+  cols_counter_d = cols_counter_q;
+  row_counter_d = row_counter_q;
+  rlast_o = cols_counter_q == NumCols - 1 && rdata_ready_o? 1'b1 : 1'b0;
+  wlast_o = cols_counter_q == NumCols - 1 && we_o? 1'b1 : 1'b0;
   
   back_id_d = back_id_q;
-  waddr_d = waddr_q;
-  raddr_d = raddr_q;
+  waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = waddr_q[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR];
+  if(quadrilatero_pkg::TILE_ADDR != 0) begin
+    waddr_d[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_d, cols_counter_d}; //TODO: not sure about _d
+  end
 
   case (lsu_state_q)
     LSU_IDLE: begin
       back_id_d = instr_id_i; 
-      waddr_d = operand_reg_i;
-      raddr_d = operand_reg_i;
-      //access_counter_d = '0;
+      waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; 
+      row_counter_d = '0;
+      //cols_counter_d = '0;
       if(load_fifo_valid && !write_i && wready_i) begin 
-        if(access_counter_q == NumAccesses - 1) begin
+        if(cols_counter_q == NumCols - 1) begin
           counter_d = counter_q + 1;
           lsu_state_d = LSU_LOAD;
-          wlast_o = 1'b1;
+
         end else begin
-          access_counter_d = access_counter_q + 1;
+          cols_counter_d = cols_counter_q + 1;
           lsu_state_d = LSU_LOAD;
         end
       end else if (write_i & store_fifo_space_available && rdata_valid_i) begin
-        if(access_counter_q == NumAccesses - 1) begin
+        if(cols_counter_q == NumCols - 1) begin
           counter_d = counter_q + 1;
           lsu_state_d = LSU_STORE;
-          rlast_o = 1'b1;
         end else begin
-          access_counter_d = access_counter_q + 1;
+          cols_counter_d = cols_counter_q + 1;
           lsu_state_d = LSU_STORE;
         end
       end
@@ -223,41 +220,39 @@ module quadrilatero_register_lsu #(
       if(load_fifo_valid) begin
         if(wready_i) begin
           if(counter_q == LastRow) begin
-            if(access_counter_q == NumAccesses - 1) begin
-              wlast_o = 1'b1;
-              access_counter_d = '0;
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
               counter_d = '0;
-              lsu_state_d = LSU_DONE;
-              back_id_d = instr_id_i;
-              waddr_d = operand_reg_i;
-              raddr_d = operand_reg_i;
+              if(row_counter_q == NumCols - 1) begin
+                lsu_state_d = LSU_DONE;
+                back_id_d = instr_id_i;
+                waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; //TODO: change to only update the MSBs
+              end else begin
+                row_counter_d = row_counter_q + 1;
+              end
             end else begin
-              access_counter_d = access_counter_q + 1;
+              cols_counter_d = cols_counter_q + 1;
             end
           end else begin
-            if(access_counter_q == NumAccesses - 1) begin
-              wlast_o = 1'b1;
-              access_counter_d = '0;
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
               counter_d = counter_q + 1;
             end else begin
-              access_counter_d = access_counter_q + 1;
+              cols_counter_d = cols_counter_q + 1;
             end
           end
         end
 
       end else begin
         if(write_i && wready_i) begin 
-          if(access_counter_q == NumAccesses - 1) begin
+          if(cols_counter_q == NumCols - 1) begin
             counter_d = '0;
-            wlast_o = 1'b1;
             lsu_state_d = LSU_DONE;
-            access_counter_d = '0;
+            cols_counter_d = '0;
             back_id_d = instr_id_i;
-            waddr_d = operand_reg_i;
-            raddr_d = operand_reg_i;
-           
+            waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; //TODO: change to only update the MSBs
           end else begin
-            access_counter_d = access_counter_q + 1;
+            cols_counter_d = cols_counter_q + 1;
           end
         end
         
@@ -266,25 +261,26 @@ module quadrilatero_register_lsu #(
     LSU_STORE: begin
       if(store_fifo_space_available && write_i && rdata_valid_i) begin
           if(counter_q == LastRow) begin
-            if(access_counter_q == NumAccesses - 1) begin
-              rlast_o = 1'b1;
-              access_counter_d = '0;
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
               counter_d = '0;
-              lsu_state_d = LSU_DONE;
-              back_id_d = instr_id_i;
-              waddr_d = operand_reg_i;
-              raddr_d = operand_reg_i;
+              if(row_counter_q == NumCols-1) begin
+                lsu_state_d = LSU_DONE;
+                back_id_d = instr_id_i;
+                waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; //TODO: change to only update the MSBs
+              end else begin
+                row_counter_d = row_counter_q + 1;
+              end
             end else begin
-              access_counter_d = access_counter_q + 1;
+              cols_counter_d = cols_counter_q + 1;
             end
             
           end else begin
-            if(access_counter_q == NumAccesses - 1) begin
-              rlast_o = 1'b1;
-              access_counter_d = '0;
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
               counter_d = counter_q + 1;
             end else begin
-              access_counter_d = access_counter_q + 1;
+              cols_counter_d = cols_counter_q + 1;
             end
           end
         end else begin 
@@ -295,22 +291,20 @@ module quadrilatero_register_lsu #(
     end
     LSU_DONE: begin
       if(load_fifo_valid && !write_i && wready_i) begin
-        if(access_counter_q == NumAccesses - 1) begin
-          access_counter_d = '0;
+        if(cols_counter_q == NumCols - 1) begin
+          cols_counter_d = '0;
           counter_d = counter_q + 1;
-          wlast_o = 1'b1;
           lsu_state_d = LSU_LOAD;
         end else begin
-          access_counter_d = access_counter_q + 1;
+          cols_counter_d = cols_counter_q + 1;
         end    
       end else if (write_i && store_fifo_space_available && rdata_valid_i) begin
-        if(access_counter_q == NumAccesses - 1) begin
+        if(cols_counter_q == NumCols - 1) begin
           counter_d = counter_q + 1;
-          rlast_o = 1'b1;
           lsu_state_d = LSU_STORE;
-          access_counter_d = '0;
+          cols_counter_d = '0;
         end else begin
-          access_counter_d = access_counter_q + 1;
+          cols_counter_d = cols_counter_q + 1;
         end
       end else begin
         lsu_state_d = LSU_IDLE;
@@ -328,7 +322,6 @@ module quadrilatero_register_lsu #(
     if (!rst_ni) begin
       counter_q <= '0;
       waddr_q   <= '0;
-      raddr_q   <= '0;
       back_id_q <= '0;
       start_q   <= '0;
       write_q   <= '0;
@@ -338,13 +331,12 @@ module quadrilatero_register_lsu #(
       lsu_busy_q <= '0;
       src_ptr_q  <= '0;
       stride_q   <= '0;
-      access_counter_q <= '0;
-      load_row_buffer_q <= '0;
+      cols_counter_q <= '0;
+      row_counter_q <= '0;
     end else begin
       counter_q <= counter_d;
       back_id_q <= back_id_d;
       waddr_q   <= waddr_d  ; 
-      raddr_q   <= raddr_d  ;
       start_q   <= start_d  ;
       write_q   <= write_d  ;
       busy_q    <= busy_d   ;
@@ -353,8 +345,8 @@ module quadrilatero_register_lsu #(
       lsu_busy_q <= busy;
       src_ptr_q  <= src_ptr_d;
       stride_q   <= stride_d ;
-      access_counter_q <= access_counter_d;
-      load_row_buffer_q <= load_row_buffer_d;
+      cols_counter_q <= cols_counter_d;
+      row_counter_q <= row_counter_d;
     end
   end
 
@@ -381,8 +373,7 @@ module quadrilatero_register_lsu #(
       .write_i                      (write_i), 
       .busy_o                       (busy                       ),
       .terminate_o                  (terminate                  ),
-      .last_i                       (wlast_o | rlast_o),
-      //.access_counter_match_i             (access_counter_d == access_counter_q),
+      //.cols_counter_match_i             (cols_counter_d == cols_counter_q),
 
       // Address
       .src_ptr_i                    (src_ptr                    ),
@@ -428,7 +419,7 @@ module quadrilatero_register_lsu #(
         "[quadrilatero_register_lsu] N_ROWS must be at least 2.\n"
     );
   end
-  if ((NumAccesses & (NumAccesses - 1)) != 0) begin
+  if ((NumCols & (NumCols - 1)) != 0) begin
       $error("RLEN / LLEN must be a power of 2.");
     end
 endmodule

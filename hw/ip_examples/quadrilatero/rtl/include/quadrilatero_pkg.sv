@@ -8,7 +8,7 @@ package quadrilatero_pkg;
   parameter int unsigned N_REGS                 =   8;
   parameter int unsigned DATA_WIDTH             =  32;
   parameter int unsigned BUS_WIDTH              = 128;
-  parameter int unsigned MESH_WIDTH             =   8;  //change register size
+  parameter int unsigned MESH_WIDTH             =   4;  //change register size
   parameter int unsigned SA_MESH_WIDTH          =   4;
   parameter int unsigned NUM_EXEC_UNITS         =   3;  // change me to add units
   parameter int unsigned MAX_NUM_READ_OPERANDS  =   3;
@@ -18,8 +18,14 @@ package quadrilatero_pkg;
   parameter int unsigned RF_READ_PORTS          =   4;
   parameter int unsigned RF_WRITE_PORTS         =   3;
 
-  localparam int unsigned N_ROWS = MESH_WIDTH             ;
-  localparam int unsigned RLEN   = DATA_WIDTH * MESH_WIDTH;
+  localparam int unsigned RLEN    = DATA_WIDTH * MESH_WIDTH;
+  localparam int unsigned ALEN    = 128;
+  localparam int unsigned LLEN    = 128;
+  localparam int unsigned LEN = ALEN;
+  localparam int unsigned N_ROWS  = LEN / DATA_WIDTH          ; //TODO: not sure if this is correct?
+  localparam int unsigned N_TILES = (RLEN/LEN)**2; 
+  localparam int unsigned TILE_ADDR = (RLEN/LEN) == 1? 0: RLEN/LEN;
+  localparam int unsigned N_IREGS  = N_REGS * N_TILES;
 
 
   typedef enum logic [2:0] {
