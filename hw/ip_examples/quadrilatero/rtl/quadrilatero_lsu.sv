@@ -52,6 +52,8 @@ module quadrilatero_lsu #(
   localparam int unsigned DEPTH           = (FIFO_DEPTH > 0) ? FIFO_DEPTH - 1     : 0;
   localparam int unsigned Addr_Fifo_Depth = (FIFO_DEPTH > 1) ? $clog2(FIFO_DEPTH) : 1;
   localparam int unsigned LastFifoUsage   = DEPTH - 1;
+  localparam int unsigned LastRow = quadrilatero_pkg::MESH_WIDTH-1;
+  localparam int unsigned LastCol = quadrilatero_pkg::TILE_ADDR-1;
 
 
   logic                       terminate         ;
@@ -100,7 +102,10 @@ module quadrilatero_lsu #(
   logic                       store_fifo_empty  ;
   logic [     DATA_WIDTH-1:0] store_fifo_output ;
   logic                       store_fifo_pop    ;
-
+  logic [$clog2(quadrilatero_pkg::MESH_WIDTH)-1:0] row_counter_d;
+  logic [$clog2(quadrilatero_pkg::MESH_WIDTH)-1:0] row_counter_q;
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1:0] col_counter_q; //TODO: check cols counter when TILE_ADDR == 0
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1:0] col_counter_d;
 
   enum {
     LSU_READY,
@@ -135,17 +140,37 @@ module quadrilatero_lsu #(
 
   always_comb begin : addr_block
     src_ptr_inc = DATA_WIDTH / 8;
-    addr_op2    = (cols_q == '0)      ? stride_i  : src_ptr_inc;
-    addr        = (start_i || ((rows_q == rows_i - 1) && (cols_q == cols_i - 1)))  ? src_ptr_i : ptr_q + addr_op2;
+    addr_op2    = (stride_i * row_counter_q) + (src_ptr_inc * col_counter_q);
+    addr        = (start_i || ((rows_q == rows_i - 1) && (cols_q == cols_i - 1)))  ? src_ptr_i : src_ptr_i + addr_op2;
     ptr_d       = (data_gnt_i && data_req_o) ? addr : ptr_q; 
   end
 
   always_comb begin : counters_block 
       rows_d = rows_q;
       cols_d = cols_q;
+      row_counter_d = row_counter_q;
+      col_counter_d = col_counter_q;
 
       if(start_i) begin
         if(data_gnt_i && data_req_o) begin
+          if(quadrilatero_pkg::TILE_ADDR != 0) begin
+          if(col_counter_q == LastCol) begin
+            col_counter_d = '0;
+            if(row_counter_q == LastRow) begin
+              row_counter_d = '0;
+            end else begin
+              row_counter_d = row_counter_q + 1;
+            end
+          end else begin
+            col_counter_d = col_counter_d + 1;
+          end
+          end else begin
+            if(row_counter_q == LastRow) begin
+                row_counter_d = '0;
+              end else begin
+                row_counter_d = row_counter_q + 1;
+              end
+          end
           if(cols_i > 1) begin
             rows_d = rows_i - 1;
             cols_d = cols_i - 2;
@@ -158,6 +183,24 @@ module quadrilatero_lsu #(
           cols_d = cols_i - 1;
         end
       end else if (data_gnt_i && data_req_o) begin
+        if(quadrilatero_pkg::TILE_ADDR != 0) begin
+          if(col_counter_q == LastCol) begin
+            col_counter_d = '0;
+            if(row_counter_q == LastRow) begin
+              row_counter_d = '0;
+            end else begin
+              row_counter_d = row_counter_q + 1;
+            end
+          end else begin
+            col_counter_d = col_counter_d + 1;
+          end
+        end else begin
+          if(row_counter_q == LastRow) begin
+              row_counter_d = '0;
+            end else begin
+              row_counter_d = row_counter_q + 1;
+            end
+        end
         if (cols_q > 0) cols_d = cols_q - 1;
         else if (rows_q > 0) begin
           cols_d = cols_i - 1;
@@ -296,6 +339,8 @@ module quadrilatero_lsu #(
       rd_head_q         <= '0       ;
       rd_valid_q        <= '0       ;
       data_we_q         <= '0       ;
+      row_counter_q     <= '0       ;
+      col_counter_q    <= '0       ;
     end else begin
       lsu_state_q       <= lsu_state_d;
       ptr_q             <= ptr_d      ;
@@ -304,6 +349,8 @@ module quadrilatero_lsu #(
       rd_head_q         <= rd_head_d  ;
       rd_valid_q        <= rd_valid_d ;
       data_we_q         <= data_we_d  ;
+      row_counter_q     <= row_counter_d;
+      col_counter_q     <= col_counter_d;
     end
   end
 

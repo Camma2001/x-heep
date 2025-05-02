@@ -100,8 +100,10 @@ module quadrilatero_systolic_array #(
 
   logic [$clog2(K)-1:0] ff_k_counter_d;
   logic [$clog2(K)-1:0] ff_k_counter_q;
+  logic [$clog2(K)-1:0] ff_k_counter_rev;
   logic [$clog2(K)-1:0] dr_k_counter_d;
   logic [$clog2(K)-1:0] dr_k_counter_q;
+  logic [$clog2(K)-1:0] dr_k_counter_rev;
   logic [$clog2(K)-1:0] ff_it_counter_d;
   logic [$clog2(K)-1:0] ff_it_counter_q;
   logic [$clog2(K)-1:0] dr_it_counter_d;
@@ -149,6 +151,7 @@ module quadrilatero_systolic_array #(
   logic [xif_pkg::X_ID_WIDTH-1:0] finished_instr_id_d;
   logic [xif_pkg::X_ID_WIDTH-1:0] finished_instr_id_q;
   logic                           mask_req           ;
+  logic ready;
 
   quadrilatero_pkg::sa_ctrl_t [MESH_WIDTH-1:0]             sa_ctrl_mesh_skewed;
 
@@ -158,16 +161,17 @@ module quadrilatero_systolic_array #(
   logic                 [MESH_WIDTH-1:0][DATA_WIDTH-1:0] res_mesh_skewed    ;
 
   //---------------------------------------------------------------------
-
+  assign ff_k_counter_rev = (K-1-ff_k_counter_q);
+  assign dr_k_counter_rev = (K-1-dr_k_counter_q);
   always_comb begin: rf_block
     // Weight Read Register Port
     weight_raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]       = weight_reg_q              ;
     if(quadrilatero_pkg::TILE_ADDR != 0) begin
-      weight_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_it_counter_q, (K-1-ff_k_counter_q)};
+      weight_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_it_counter_q, ff_k_counter_rev};
     end
     weight_rrowaddr_o    = ff_counter_q;  
     weight_rdata_ready_o = (ff_state_q != FF_IDLE) &~ mask_req   ; 
-    weight_rlast_o       = (ff_state_q != FF_IDLE) && (ff_k_counter_q == (K-1) && ff_row_counter_q == (RegLastRow-1))  ; // might leave at ff_it_counter_q == (K-1) to free all regs at the same time?
+    weight_rlast_o       = (ff_state_q != FF_IDLE) && (ff_row_counter_q == (RegLastRow-1))  ; // might leave at ff_it_counter_q == (K-1) to free all regs at the same time?
 
     // Data Read Register Port
     data_raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]         = data_reg_q                ;
@@ -176,12 +180,12 @@ module quadrilatero_systolic_array #(
     end
     data_rrowaddr_o      = ff_counter_q;
     data_rdata_ready_o   = (ff_state_q != FF_IDLE)  &~ mask_req  ;
-    data_rlast_o         = ff_state_q != FF_IDLE && (ff_it_counter_q == (K-1) && ff_k_counter_q == (K-1)) ;
+    data_rlast_o         = ff_state_q != FF_IDLE  && (ff_k_counter_q == (K-1)) ;
 
     // Accumulator Read Register Port
     acc_raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]          = acc_reg_q                 ;
     if(quadrilatero_pkg::TILE_ADDR != 0) begin  
-      acc_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_row_counter_q, (K-1-ff_k_counter_q)};
+      acc_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_row_counter_q, ff_k_counter_rev};
     end
     acc_rrowaddr_o       = ff_counter_q;
     acc_rdata_ready_o    = (ff_state_q != FF_IDLE) &~ mask_req   ;
@@ -190,25 +194,25 @@ module quadrilatero_systolic_array #(
     // Accumulator Out Write Register Port
     res_waddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]         = dest_reg_q                ;
     if(quadrilatero_pkg::TILE_ADDR != 0) begin
-      res_waddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {dr_row_counter_q, (K-1-dr_k_counter_q)};
+      res_waddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {dr_row_counter_q, dr_k_counter_rev};
     end
     res_wrowaddr_o      = dr_counter_q; 
     res_we_o            = (dr_state_q == DR_ACTIVE || last_dr_write == 1'b1)  &~ mask_req;
-    res_wlast_o         = (dr_state_q != DR_IDLE) && (dr_it_counter_q == (K-1) && dr_k_counter_q == (K-1));
+    res_wlast_o         = (dr_state_q != DR_IDLE) && (dr_it_counter_q == (K-1));
   end
 
   always_comb begin: finished_signal
 
-    finished_d          = (res_wready_i && (dr_counter_q == LastRow) && res_wlast_o && (dr_row_counter_q == RegLastRow-1)) ? 1'b1 :
+    finished_d          = (res_wready_i && (dr_counter_q == LastRow) && res_wlast_o && (dr_row_counter_q == RegLastRow-1) && (dr_k_counter_q == K-1)) ? 1'b1 :
                           (finished_ack_i             ) ? 1'b0 : finished_q;
 
-    finished_instr_id_d = (res_wready_i && (dr_counter_q == LastRow) && res_wlast_o && (dr_row_counter_q == RegLastRow-1)) ? id_dr_q :
+    finished_instr_id_d = (res_wready_i && (dr_counter_q == LastRow) && res_wlast_o && (dr_row_counter_q == RegLastRow-1) && (dr_k_counter_q == K-1)) ? id_dr_q :
                           (finished_ack_i             ) ? '0      : finished_instr_id_q; 
   end
 
   always_comb begin: ctrl_block
     valid = weight_rdata_valid_i & data_rdata_valid_i & acc_rdata_valid_i;
-    if((ff_state_q == FF_IDLE) && (fs_state_q == FS_IDLE) && (dr_state_q == DR_IDLE)) begin 
+    if((ff_state_q == FF_IDLE || (ff_state_q == FF_ACTIVE && ff_counter_q == '0 && ff_counter_d == '0)) && (fs_state_q == FS_IDLE) && (dr_state_q == DR_IDLE)) begin //TODO: check this condition (ff_state_q == FF_IDLE || (ff_state_q == FF_ACTIVE && valid == 1'b0))
       clear = 1'b1;
     end else begin
       clear = 1'b0;
@@ -311,7 +315,7 @@ module quadrilatero_systolic_array #(
     unique case(fs_state_q) 
       FS_IDLE: begin
         fs_counter_d = '0;
-        if(ff_state_q == FF_DONE) begin 
+        if(ff_state_q == FF_DONE && valid == 1'b1) begin 
           fs_state_d = FS_ACTIVE;
 
           acc_fs_d = acc_reg_q;
@@ -582,8 +586,8 @@ module quadrilatero_systolic_array #(
       dr_row_counter_q    <= dr_row_counter_d       ;
     end
   end
- 
-  assign sa_ready_o          = ff_state_q != FF_ACTIVE ; // && fs_state_q == FS_IDLE?
+  assign ready = (ff_state_q == FF_DONE) && (ff_k_counter_q == K-1) && (ff_it_counter_q == K-1) && (ff_row_counter_q == RegLastRow-1);
+  assign sa_ready_o          = ready || (ff_state_q == FF_IDLE && fs_state_q == FS_IDLE); // && fs_state_q == FS_IDLE?
   assign sa_input_id_o       = id_ff_q            ;
   assign sa_output_id_o      = id_dr_q            ;
   assign finished_o          = finished_q         ;

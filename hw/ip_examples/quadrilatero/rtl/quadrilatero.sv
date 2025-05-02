@@ -126,7 +126,7 @@ module quadrilatero
 
 
   // RF Sequencer
-  logic [quadrilatero_pkg::READ_PORTS-1    :0][$clog2(quadrilatero_pkg::N_REGS)-1:0] rf_seq_raddr_from_fu   ;
+  logic [quadrilatero_pkg::READ_PORTS-1    :0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] rf_seq_raddr_from_fu   ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0][$clog2(quadrilatero_pkg::N_ROWS)-1:0] rf_seq_rrowaddr_from_fu;
   logic [quadrilatero_pkg::READ_PORTS-1    :0][quadrilatero_pkg::LEN-1:0]           rf_seq_rdata_from_fu   ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0]                                     rf_seq_rvalid_from_fu  ;
@@ -134,7 +134,7 @@ module quadrilatero
   logic [quadrilatero_pkg::READ_PORTS-1    :0]                                     rf_seq_rready_from_fu  ;
   logic [quadrilatero_pkg::READ_PORTS-1    :0][xif_pkg::X_ID_WIDTH-1:0]            rf_seq_rd_id_from_fu   ;
 
-  logic [quadrilatero_pkg::WRITE_PORTS-1   :0][$clog2(quadrilatero_pkg::N_REGS)-1:0] rf_seq_waddr_from_fu   ;
+  logic [quadrilatero_pkg::WRITE_PORTS-1   :0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] rf_seq_waddr_from_fu   ;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0][$clog2(quadrilatero_pkg::N_ROWS)-1:0] rf_seq_wrowaddr_from_fu;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0][quadrilatero_pkg::LEN-1:0]           rf_seq_wdata_from_fu   ;
   logic [quadrilatero_pkg::WRITE_PORTS-1   :0]                                     rf_seq_we_from_fu      ;
@@ -227,14 +227,14 @@ module quadrilatero
   logic                                      lsu_wready           ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            lsu_id               ;
   logic [quadrilatero_pkg::LEN-1:0]           lsu_wdata            ;
-  logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] lsu_waddr            ;
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] lsu_waddr            ;
   logic [$clog2(quadrilatero_pkg::N_ROWS)-1:0] lsu_wrowaddr         ;
 
   logic                                      lsu_rlast            ;
   logic                                      lsu_rready           ;
   logic                                      lsu_rvalid           ;
   logic [quadrilatero_pkg::LEN-1:0]           lsu_rdata            ;
-  logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] lsu_raddr            ;
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] lsu_raddr            ;
   logic [$clog2(quadrilatero_pkg::N_ROWS)-1:0] lsu_rrowaddr         ;
 
   logic                                      lsu_busy             ;
@@ -255,7 +255,7 @@ module quadrilatero
   logic [xif_pkg::X_ID_WIDTH-1:0]            perm_unit_instr_id         ;
   logic [xif_pkg::X_ID_WIDTH-1:0]            perm_unit_finished_instr_id;
   logic [quadrilatero_pkg::LEN-1:0]           perm_unit_wdata            ;
-  logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] perm_unit_waddr            ;
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] perm_unit_waddr            ;
   logic [$clog2(quadrilatero_pkg::N_ROWS)-1:0] perm_unit_wrowaddr         ;
   logic [$clog2(quadrilatero_pkg::N_REGS)-1:0] perm_unit_reg              ;
 

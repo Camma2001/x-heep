@@ -9,7 +9,7 @@ module quadrilatero_regfile #(
     parameter WRITE_PORTS = 2,  // number of write ports 
     parameter N_REGS = 8,  // how many registers
     parameter RLEN = 128,  // length in bits for each register row
-    localparam N_ROWS = RLEN / 32  // this is done in the thead spec
+    localparam N_ROWS = quadrilatero_pkg::LEN / 32  // this is done in the thead spec
 ) (
     // clock and reset
     input logic clk_i,

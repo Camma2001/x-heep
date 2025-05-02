@@ -5,7 +5,7 @@
 // Author: Danilo Cammarata
 
 module quadrilatero_lsu #(
-    parameter int unsigned FIFO_DEPTH = quadrilatero_pkg::MESH_WIDTH,
+    parameter int unsigned FIFO_DEPTH = 4,
     parameter int unsigned DATA_WIDTH = 32
 
 ) (
@@ -27,9 +27,7 @@ module quadrilatero_lsu #(
     input  logic                      write_i                     ,  // write transaction
     output logic                      busy_o                      ,  // lsu available
     output logic                      terminate_o                 ,  // lsu done
-    input  logic                      last_i,
-    input  logic                      access_counter_match_i,
-    
+
     // Address
     input  logic [              31:0] src_ptr_i                   ,  // base address
     input  logic [              31:0] stride_i                    ,  // stride to move in memory from one row to the next one
@@ -102,8 +100,6 @@ module quadrilatero_lsu #(
   logic                       store_fifo_empty  ;
   logic [     DATA_WIDTH-1:0] store_fifo_output ;
   logic                       store_fifo_pop    ;
-  logic                       last_q            ;
-  logic                       last_d            ;
 
 
   enum {
@@ -113,7 +109,6 @@ module quadrilatero_lsu #(
       lsu_state_q, lsu_state_d;
 
 
-  assign last_d = last_i;
   always_comb begin : FSM_block
     lsu_state_d  = lsu_state_q;
 
@@ -124,7 +119,7 @@ module quadrilatero_lsu #(
         end
       end
       LSU_RUNNING: begin
-        if (terminate && !start_i && (store_fifo_empty)) begin
+        if (terminate && !start_i) begin
           lsu_state_d = LSU_READY;
         end
       end
@@ -132,8 +127,7 @@ module quadrilatero_lsu #(
   end
   
   always_comb begin : ctrl_block
-    terminate         = ((rows_q == 'b1 && last_i && !write_i)  
-                        && |cols_q == '0 && data_gnt_i && data_req_o && (lsu_state_q == LSU_RUNNING)); //absolutely ugly
+    terminate         = (|rows_q == '0 && |cols_q == '0 && data_gnt_i && data_req_o && (lsu_state_q == LSU_RUNNING)); 
     load_fifo_valid_o = rd_valid_d;
     busy_o            = (lsu_state_q == LSU_RUNNING) & ~terminate;
     terminate_o       = terminate;
@@ -142,7 +136,7 @@ module quadrilatero_lsu #(
   always_comb begin : addr_block
     src_ptr_inc = DATA_WIDTH / 8;
     addr_op2    = (cols_q == '0)      ? stride_i  : src_ptr_inc;
-    addr        = (start_i)  ? src_ptr_i : ptr_q + addr_op2; // || ((rows_q == rows_i - 1) && (cols_q == cols_i - 1)) && (access_counter_match_i == 1'b0)
+    addr        = (start_i || ((rows_q == rows_i - 1) && (cols_q == cols_i - 1)))  ? src_ptr_i : ptr_q + addr_op2;
     ptr_d       = (data_gnt_i && data_req_o) ? addr : ptr_q; 
   end
 
@@ -156,14 +150,14 @@ module quadrilatero_lsu #(
             rows_d = rows_i - 1;
             cols_d = cols_i - 2;
           end else if (rows_i > 1) begin
-            rows_d = rows_i - 1;
+            rows_d = rows_i - 2;
             cols_d = cols_i - 1;
           end
         end else begin
           rows_d = rows_i - 1;
           cols_d = cols_i - 1;
         end
-      end else if (data_gnt_i && data_req_o && last_i) begin
+      end else if (data_gnt_i && data_req_o) begin
         if (cols_q > 0) cols_d = cols_q - 1;
         else if (rows_q > 0) begin
           cols_d = cols_i - 1;
@@ -297,7 +291,6 @@ module quadrilatero_lsu #(
     if (~rst_ni) begin
       lsu_state_q       <= LSU_READY;
       ptr_q             <= '0       ;
-      last_q            <= '0       ;
       rows_q            <= '0       ;
       cols_q            <= '0       ;
       rd_head_q         <= '0       ;
@@ -306,7 +299,6 @@ module quadrilatero_lsu #(
     end else begin
       lsu_state_q       <= lsu_state_d;
       ptr_q             <= ptr_d      ;
-      last_q            <= last_d     ;
       rows_q            <= rows_d     ;
       cols_q            <= cols_d     ;
       rd_head_q         <= rd_head_d  ;

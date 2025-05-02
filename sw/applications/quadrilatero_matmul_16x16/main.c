@@ -472,7 +472,7 @@ void  __attribute__ ((noinline))  matrixMul_16x16(DATA_IN_t* addrA,DATA_IN_t* ad
 
     asm volatile("loopN_start16x16:               "                            );   // while(n0<N) {
     asm volatile("addi    t4,t1,8               "                            );   // t4  = n0+WIDTH;
-    asm volatile("addi    t2,x0,16              "                            );   // t2  = k0 = 16;
+    asm volatile("addi    t2,x0,32              "                            );   // t2  = k0 = 16;
     asm volatile("slli    t5,t1, 2              "                            );   // t5  = n0*4;
     asm volatile("mld.w   m0, (s1) , s3         "                            );   // m0  = A[s1] 
     asm volatile("mzero   m4                    "                            );   // m4  = 0;
@@ -492,13 +492,13 @@ void  __attribute__ ((noinline))  matrixMul_16x16(DATA_IN_t* addrA,DATA_IN_t* ad
     asm volatile("loopK_start16x16:               "                            );   // while(k0*4<K*4) { 
     asm volatile("add     s6 ,s1 ,t2            "                            );   // s6  = startAddrA0 += k0*4
     asm volatile(MACC(HEAD_LINE,5,3,0)                                                 );   // m5 +=  m3 * m0
-    asm volatile("mld.w   m0, (s6) , s3         "                            );   // m0  = A[s1]
+    asm volatile("mld.w   m0, (s6) , s3         "                            );   // m0  = A[s1] //TODO: try swapping this line with 499
     asm volatile("add     s7 ,s9 ,t2            "                            );   // s7  = startAddrB0 += k0*4
     asm volatile("add     s5 ,s2 ,t2            "                            );   // s5  = startAddrA1 += k0*4
     asm volatile(MACC(HEAD_LINE,7,3,2)                                                 );   // m7 += m3 * m2
-    asm volatile("mld.w   m1, (s7) , a6         "                            );   // m1  = B[s7]
+    asm volatile("mld.w   m1, (s7) , a6         "                            );   // m1  = B[s7] //TODO: try swapping this line with 495
     asm volatile("add     s8,s11,t2             "                            );   // s8  = startAddrB1 += k0*4
-    asm volatile("addi    t2,t2,16              "                            );   // t2  = k0*4 += 4*4;
+    asm volatile("addi    t2,t2,32              "                            );   // t2  = k0*4 += 4*4;
     asm volatile(MACC(HEAD_LINE,4,1,0)                                                 );   // m4 += m1 * m0 
     asm volatile("mld.w   m2, (s5) , s3         "                            );   // m2  = A[s5]
     asm volatile("mld.w   m3, (s8) , a6         "                            );   // m3  = B[s8]
