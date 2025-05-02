@@ -133,7 +133,7 @@ module quadrilatero_lsu #(
   
   always_comb begin : ctrl_block
     terminate         = (|rows_q == '0 && |cols_q == '0 && data_gnt_i && data_req_o && (lsu_state_q == LSU_RUNNING)); 
-    load_fifo_valid_o = rd_valid_d;
+    load_fifo_valid_o = rd_valid_d | rd_valid_q;
     busy_o            = (lsu_state_q == LSU_RUNNING) & ~terminate;
     terminate_o       = terminate;
   end

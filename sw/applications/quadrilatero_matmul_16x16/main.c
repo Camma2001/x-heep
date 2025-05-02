@@ -472,7 +472,7 @@ void  __attribute__ ((noinline))  matrixMul_16x16(DATA_IN_t* addrA,DATA_IN_t* ad
 
     asm volatile("loopN_start16x16:               "                            );   // while(n0<N) {
     asm volatile("addi    t4,t1,8               "                            );   // t4  = n0+WIDTH;
-    asm volatile("addi    t2,x0,32              "                            );   // t2  = k0 = 16;
+    asm volatile("addi    t2,x0,32              "                            );   // t2  = k0 = 32;
     asm volatile("slli    t5,t1, 2              "                            );   // t5  = n0*4;
     asm volatile("mld.w   m0, (s1) , s3         "                            );   // m0  = A[s1] 
     asm volatile("mzero   m4                    "                            );   // m4  = 0;

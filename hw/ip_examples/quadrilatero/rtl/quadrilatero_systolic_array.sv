@@ -167,7 +167,7 @@ module quadrilatero_systolic_array #(
     // Weight Read Register Port
     weight_raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]       = weight_reg_q              ;
     if(quadrilatero_pkg::TILE_ADDR != 0) begin
-      weight_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_it_counter_q, ff_k_counter_rev};
+      weight_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_k_counter_rev, ff_it_counter_q}; //TODO: check if this is correct, we transpose B matrix (it looks correct compared to 4x4 RF)
     end
     weight_rrowaddr_o    = ff_counter_q;  
     weight_rdata_ready_o = (ff_state_q != FF_IDLE) &~ mask_req   ; 
