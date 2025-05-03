@@ -167,11 +167,11 @@ module quadrilatero_systolic_array #(
     // Weight Read Register Port
     weight_raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]       = weight_reg_q              ;
     if(quadrilatero_pkg::TILE_ADDR != 0) begin
-      weight_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_k_counter_rev, ff_it_counter_q}; //TODO: check if this is correct, we transpose B matrix (it looks correct compared to 4x4 RF)
+      weight_raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {ff_k_counter_rev, ff_it_counter_q};
     end
     weight_rrowaddr_o    = ff_counter_q;  
     weight_rdata_ready_o = (ff_state_q != FF_IDLE) &~ mask_req   ; 
-    weight_rlast_o       = (ff_state_q != FF_IDLE) && (ff_row_counter_q == (RegLastRow-1))  ; // might leave at ff_it_counter_q == (K-1) to free all regs at the same time?
+    weight_rlast_o       = (ff_state_q != FF_IDLE) && (ff_row_counter_q == (RegLastRow-1))  ; 
 
     // Data Read Register Port
     data_raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]         = data_reg_q                ;
@@ -212,7 +212,7 @@ module quadrilatero_systolic_array #(
 
   always_comb begin: ctrl_block
     valid = weight_rdata_valid_i & data_rdata_valid_i & acc_rdata_valid_i;
-    if((ff_state_q == FF_IDLE || (ff_state_q == FF_ACTIVE && ff_counter_q == '0 && ff_counter_d == '0)) && (fs_state_q == FS_IDLE) && (dr_state_q == DR_IDLE)) begin //TODO: check this condition (ff_state_q == FF_IDLE || (ff_state_q == FF_ACTIVE && valid == 1'b0))
+    if((ff_state_q == FF_IDLE || (ff_state_q == FF_ACTIVE && ff_counter_q == '0 && ff_counter_d == '0)) && (fs_state_q == FS_IDLE) && (dr_state_q == DR_IDLE)) begin 
       clear = 1'b1;
     end else begin
       clear = 1'b0;
@@ -270,7 +270,7 @@ module quadrilatero_systolic_array #(
           ff_valid = 1'b1;
           ff_counter_d = '0;
           ff_state_d = FF_ACTIVE;
-          if(ff_it_counter_q == (K-1) && ff_row_counter_q == (RegLastRow - 1) && ff_k_counter_q == (K-1) && start_i == 1'b1) begin // get inputs from new instruction
+          if(ff_it_counter_q == (K-1) && ff_row_counter_q == (RegLastRow - 1) && ff_k_counter_q == (K-1) && start_i == 1'b1) begin 
             ff_it_counter_d = '0;
             ff_row_counter_d = '0;
             ff_k_counter_d = '0;
@@ -376,7 +376,7 @@ module quadrilatero_systolic_array #(
         dr_k_counter_d = '0;
         dr_it_counter_d = '0;
         dr_row_counter_d = '0;
-        if(fs_state_q == FS_LAST) begin //fs_counter_d == LastRow ) && (fs_counter_q == LastRow - 1
+        if(fs_state_q == FS_LAST) begin 
           dr_state_d = DR_ACTIVE;
           dest_reg_d = acc_fs_q;
           id_dr_d = id_fs_q;
@@ -412,7 +412,7 @@ module quadrilatero_systolic_array #(
                   dr_row_counter_d = dr_row_counter_q + 1;
                 end
               end
-              if(fs_state_q == FS_LAST) begin //stay in the active mode, load new inputs (fs_counter_d == LastRow - 1 ) && (fs_counter_q == LastRow - 2)
+              if(fs_state_q == FS_LAST) begin //stay in the active mode, load new inputs 
                 dr_state_d = DR_ACTIVE;
                 dest_reg_d = acc_fs_q;
                 id_dr_d = id_fs_q;
@@ -431,7 +431,7 @@ module quadrilatero_systolic_array #(
         if((fs_state_q == FS_IDLE && dr_it_counter_q == (K-1) && dr_row_counter_q == (RegLastRow-1) && dr_k_counter_q == (K-1))) begin
           last_dr_write = 1'b1;
           if(res_wready_i == 1'b0) begin
-            dr_state_d = DR_IDLE; //TODO: check if this is correct
+            dr_state_d = DR_IDLE; 
           end else begin
             dr_state_d = DR_DONE;
             if(dr_counter_q == LastRow) begin
@@ -587,7 +587,7 @@ module quadrilatero_systolic_array #(
     end
   end
   assign ready = (ff_state_q == FF_DONE) && (ff_k_counter_q == K-1) && (ff_it_counter_q == K-1) && (ff_row_counter_q == RegLastRow-1);
-  assign sa_ready_o          = ready || (ff_state_q == FF_IDLE && fs_state_q == FS_IDLE); // && fs_state_q == FS_IDLE?
+  assign sa_ready_o          = ready || (ff_state_q == FF_IDLE && fs_state_q == FS_IDLE); 
   assign sa_input_id_o       = id_ff_q            ;
   assign sa_output_id_o      = id_dr_q            ;
   assign finished_o          = finished_q         ;

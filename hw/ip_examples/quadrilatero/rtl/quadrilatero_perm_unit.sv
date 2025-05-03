@@ -172,7 +172,7 @@ module quadrilatero_perm_unit #(
   end
 
 
-  assign waddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]              = operand_reg_q              ; //TODO: fix
+  assign waddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]              = operand_reg_q;           
   if(quadrilatero_pkg::TILE_ADDR != 0) begin  
     assign waddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_q, cols_counter_q};
   end

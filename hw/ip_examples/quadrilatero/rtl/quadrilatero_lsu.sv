@@ -104,7 +104,7 @@ module quadrilatero_lsu #(
   logic                       store_fifo_pop    ;
   logic [$clog2(quadrilatero_pkg::MESH_WIDTH)-1:0] row_counter_d;
   logic [$clog2(quadrilatero_pkg::MESH_WIDTH)-1:0] row_counter_q;
-  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1:0] col_counter_q; //TODO: check cols counter when TILE_ADDR == 0
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1:0] col_counter_q; 
   logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1:0] col_counter_d;
 
   enum {

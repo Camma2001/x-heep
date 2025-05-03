@@ -83,7 +83,7 @@ module quadrilatero_register_lsu #(
 
   logic [$clog2(N_ROWS)-1:0] counter_q;
   logic [$clog2(N_ROWS)-1:0] counter_d;
-  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_q; //TODO: change these
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_q; 
   logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_d;
 
 
@@ -129,7 +129,8 @@ module quadrilatero_register_lsu #(
   assign mask_req     = (counter_q == LastRow) & finished_o & ~finished_ack_i;
   always_comb begin
     lsu_id_o   = (write_i &~ load_fifo_data_available & rlast_o) ? instr_id_i : back_id_q;
-    finished   = (write_q & terminate & rlast_o) | (~write_q && (counter_q == LastRow) && (row_counter_q == NumCols-1) && (cols_counter_q == NumCols-1) && wready_i && wlast_o);
+    finished   = (write_q & terminate & rlast_o) |
+                 (~write_q && (counter_q == LastRow) && (row_counter_q == NumCols-1) && (cols_counter_q == NumCols-1) && wready_i && wlast_o);
   end
   
 
@@ -147,7 +148,7 @@ module quadrilatero_register_lsu #(
     rrowaddr_o    = counter_q       ;
     raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]   = operand_reg_i; 
     if(quadrilatero_pkg::TILE_ADDR != 0) begin
-      raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_q, cols_counter_q}; //TODO: maybe change to _d
+      raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_q, cols_counter_q}; 
     end
   end
 
@@ -178,7 +179,7 @@ module quadrilatero_register_lsu #(
   end
 
   if(quadrilatero_pkg::TILE_ADDR != 0) begin
-    assign waddr_d[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_d, cols_counter_d}; //TODO: not sure about _d
+    assign waddr_d[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_d, cols_counter_d}; 
   end
 
   always_comb begin: fsm_block
@@ -277,8 +278,7 @@ module quadrilatero_register_lsu #(
               end
             end else begin
               cols_counter_d = cols_counter_q + 1;
-            end
-            
+            end    
           end else begin
             if(cols_counter_q == NumCols - 1) begin
               cols_counter_d = '0;
@@ -287,11 +287,7 @@ module quadrilatero_register_lsu #(
               cols_counter_d = cols_counter_q + 1;
             end
           end
-        end else begin 
-        // counter_d = '0;
-        // back_id_d = instr_id_i;
-        // lsu_state_d = LSU_DONE;
-      end
+      end 
     end
     LSU_DONE: begin
       if(load_fifo_valid && !write_i && wready_i) begin
@@ -379,7 +375,6 @@ module quadrilatero_register_lsu #(
       .write_i                      (write_i), 
       .busy_o                       (busy                       ),
       .terminate_o                  (terminate                  ),
-      //.cols_counter_match_i             (cols_counter_d == cols_counter_q),
 
       // Address
       .src_ptr_i                    (src_ptr                    ),

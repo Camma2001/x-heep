@@ -129,7 +129,7 @@ module quadrilatero_rf_sequencer #(
     rw_queue_full_o = '0;
     for (int i = 0; i < quadrilatero_pkg::N_IREGS; i++) begin
       for (int h = 0; h < N_ROWS; h++) begin
-        rw_queue_full_o[i>>quadrilatero_pkg::TILE_ADDR]  |= (rw_queue_full[i][h]); //TODO: change this
+        rw_queue_full_o[i>>quadrilatero_pkg::TILE_ADDR]  |= (rw_queue_full[i][h]); 
 
       
         head_valid[i][h] = scoreboard_q[i][h].valid;

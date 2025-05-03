@@ -8,8 +8,8 @@ package quadrilatero_pkg;
   parameter int unsigned N_REGS                 =   8;
   parameter int unsigned DATA_WIDTH             =  32;
   parameter int unsigned BUS_WIDTH              = 128;
-  parameter int unsigned MESH_WIDTH             =   8;  //change register size
-  parameter int unsigned SA_MESH_WIDTH          =   4;
+  parameter int unsigned MESH_WIDTH             =   8;  // change register dimension
+  parameter int unsigned SA_MESH_WIDTH          =   4;  // change systolic array dimension
   parameter int unsigned NUM_EXEC_UNITS         =   3;  // change me to add units
   parameter int unsigned MAX_NUM_READ_OPERANDS  =   3;
   parameter int unsigned MAX_NUM_WRITE_OPERANDS =   1;
