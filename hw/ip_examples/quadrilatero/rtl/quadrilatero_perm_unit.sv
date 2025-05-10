@@ -14,9 +14,9 @@ module quadrilatero_perm_unit #(
     input  logic                           rst_ni              ,
 
     // Register Write Port 
-    output logic [     $clog2(N_REGS)-1:0] waddr_o             ,
+    output logic [     $clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_o             ,
     output logic [     $clog2(N_ROWS)-1:0] wrowaddr_o          ,
-    output logic [               RLEN-1:0] wdata_o             ,
+    output logic [               quadrilatero_pkg::LEN-1:0] wdata_o             ,
     output logic                           we_o                ,
     output logic                           wlast_o             ,
     input  logic                           wready_i            ,  // to stall the request in case the port is busy
@@ -58,8 +58,13 @@ module quadrilatero_perm_unit #(
   logic                           mask_req           ;
   logic                           fifo_full          ;
   logic                           fifo_empty         ;
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1 : 0] row_counter_d;
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1 : 0] row_counter_q;
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1 : 0] cols_counter_d;
+  logic [$clog2(quadrilatero_pkg::TILE_ADDR)-1 : 0] cols_counter_q;
 
   localparam int unsigned USAGE = DEPTH > 1 : $clog2(DEPTH) : 0;
+  localparam int unsigned TILES = RLEN / quadrilatero_pkg::LEN;
   logic [USAGE:0] fifo_usage;
   logic           fifo_almost_full;
   //----------------------------------------------------------------------------------------------------------
@@ -86,7 +91,8 @@ module quadrilatero_perm_unit #(
 
   always_comb begin : ctrl_block 
     mask_req    = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) & finished_q & ~finished_ack_i;
-    finished    = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) & write_started_q & wready_i  ;
+    finished    = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) && (row_counter_q == TILES-1) && (cols_counter_q == TILES-1)
+                  & write_started_q & wready_i  ;
     busy        = write_started_q &~ finished                                              ;
     start       = ~busy & ~fifo_empty                                                      ;
     finished_id = id_q                                                                     ;
@@ -99,6 +105,8 @@ module quadrilatero_perm_unit #(
     write_started_d     = write_started_q    ;
     finished_d          = finished_q         ;
     finished_instr_id_d = finished_instr_id_q;
+    cols_counter_d = cols_counter_q;
+    row_counter_d = row_counter_q;
 
     if (start) begin
       operand_reg_d = operand_reg_new;
@@ -106,9 +114,24 @@ module quadrilatero_perm_unit #(
     end
 
     if ((write_started_q && wready_i)) begin
-      counter_d = counter_q + 1;
+      if(cols_counter_q == TILES-1) begin
+        cols_counter_d = '0;
+        if(counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) begin
+          counter_d = '0;
+          if(row_counter_q == TILES-1) begin
+            row_counter_d = '0;
+          end else begin
+            row_counter_d = row_counter_q + 1;
+          end
+        end else begin
+          counter_d = counter_q + 1;
+        end
+      end else begin
+        cols_counter_d = cols_counter_q + 1;
+      end
     end else if (finished) begin
       counter_d = '0;
+
     end  
 
     if (start) begin
@@ -134,6 +157,8 @@ module quadrilatero_perm_unit #(
       id_q                <= '0;
       write_started_q     <= '0;
       counter_q           <= '0;
+      row_counter_q       <= '0;
+      cols_counter_q      <= '0;
     end else begin
       finished_q          <= finished_d         ;
       finished_instr_id_q <= finished_instr_id_d;
@@ -141,15 +166,20 @@ module quadrilatero_perm_unit #(
       id_q                <= id_d               ;
       write_started_q     <= write_started_d    ;
       counter_q           <= counter_d          ;
+      row_counter_q       <= row_counter_d      ;
+      cols_counter_q      <= cols_counter_d     ;
     end
   end
 
 
-  assign waddr_o             = operand_reg_q              ;
+  assign waddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]              = operand_reg_q;           
+  if(quadrilatero_pkg::TILE_ADDR != 0) begin  
+    assign waddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_q, cols_counter_q};
+  end
   assign wrowaddr_o          = counter_q                  ;
   assign wdata_o             = '0                         ;
   assign we_o                = write_started_q &~ mask_req;
-  assign wlast_o             = finished                   ;
+  assign wlast_o             = write_started_q &~ mask_req                  ;
   assign busy_o              = fifo_full | fifo_almost_full;
   assign id_o                = id_q                       ;
   assign finished_o          = finished_q                 ;

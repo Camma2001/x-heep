@@ -13,7 +13,7 @@ module quadrilatero_register_lsu #(
     parameter int unsigned  BUS_WIDTH = 128,
     parameter int unsigned  N_REGS = 8,
     parameter int unsigned  N_ROWS = 4,
-    localparam int unsigned RLEN = BUS_WIDTH
+    localparam int unsigned LLEN = BUS_WIDTH
 ) (
     input  logic                          clk_i               ,
     input  logic                          rst_ni              ,
@@ -31,17 +31,17 @@ module quadrilatero_register_lsu #(
     output logic[xif_pkg::X_ID_WIDTH-1:0] lsu_id_o            ,
 
     // Register Write Port for load unit
-    output logic [    $clog2(N_REGS)-1:0] waddr_o             ,
+    output logic [    $clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] wrowaddr_o          ,
-    output logic [              RLEN-1:0] wdata_o             ,
+    output logic [quadrilatero_pkg::LEN-1:0] wdata_o             ,
     output logic                          we_o                ,
     output logic                          wlast_o             ,
     input  logic                          wready_i            ,  // to stall the request in case the port is busy
 
     // Register Read Port for store unit
-    output logic [    $clog2(N_REGS)-1:0] raddr_o             ,
+    output logic [    $clog2(quadrilatero_pkg::N_IREGS)-1:0] raddr_o             ,
     output logic [    $clog2(N_ROWS)-1:0] rrowaddr_o          ,
-    input  logic [              RLEN-1:0] rdata_i             ,
+    input  logic [quadrilatero_pkg::LEN-1:0] rdata_i             ,
     input  logic                          rdata_valid_i       ,
     output logic                          rdata_ready_o       ,
     output logic                          rlast_o             ,
@@ -64,7 +64,18 @@ module quadrilatero_register_lsu #(
 
 );
 
-  localparam MAX_EL_PER_ROW = RLEN / BUS_WIDTH;
+  localparam MAX_EL_PER_ROW = quadrilatero_pkg::RLEN / LLEN;
+  localparam LastRow = $clog2(N_ROWS)'(N_ROWS - 1);
+  localparam NumCols = quadrilatero_pkg::RLEN / LLEN;
+  
+    typedef enum logic [1:0] {
+    LSU_IDLE,
+    LSU_LOAD,
+    LSU_STORE,
+    LSU_DONE
+    } register_lsu_state_e;
+
+  register_lsu_state_e lsu_state_d, lsu_state_q;
 
   logic finished;
   logic [xif_pkg::X_ID_WIDTH-1:0] back_id_q;
@@ -72,10 +83,11 @@ module quadrilatero_register_lsu #(
 
   logic [$clog2(N_ROWS)-1:0] counter_q;
   logic [$clog2(N_ROWS)-1:0] counter_d;
-  logic [$clog2(N_REGS)-1:0] waddr_q;
-  logic [$clog2(N_REGS)-1:0] waddr_d;
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_q; 
+  logic [$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_d;
 
-  logic [RLEN-1:0] load_fifo_data;
+
+  logic [LLEN-1:0] load_fifo_data;
 
   logic load_fifo_data_available;
   logic load_fifo_pop;
@@ -83,18 +95,14 @@ module quadrilatero_register_lsu #(
   logic store_fifo_space_available;
   logic store_fifo_push;
   logic store_fifo_empty;
-  logic [RLEN-1:0] store_fifo_data;
+  logic [LLEN-1:0] store_fifo_data;
 
-  logic [RLEN-1:0] data_mask;
+  logic [LLEN-1:0] data_mask;
   logic load_fifo_valid;
   logic busy;
   logic start;
   logic start_q;
   logic start_d;
-
-
-  logic valid_d;
-  logic valid_q;
 
   logic write_q;
   logic write_d;
@@ -104,10 +112,6 @@ module quadrilatero_register_lsu #(
 
   logic lsu_busy_q;
   logic lsu_ready;
-  logic mask_req;
-
-
-
 
   logic [              31:0] src_ptr_d ;
   logic [              31:0] stride_d  ;
@@ -116,29 +120,36 @@ module quadrilatero_register_lsu #(
   logic [              31:0] src_ptr   ;
   logic [              31:0] stride    ;
 
-  assign mask_req     = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) & finished_o & ~finished_ack_i;
+  logic [$clog2(NumCols)-1:0] cols_counter_d;
+  logic [$clog2(NumCols)-1:0] cols_counter_q;
+  logic [$clog2(NumCols)-1:0] row_counter_d;
+  logic [$clog2(NumCols)-1:0] row_counter_q;
+
+
+  assign mask_req     = (counter_q == LastRow) & finished_o & ~finished_ack_i;
   always_comb begin
-    lsu_id_o   = (write_i &~ load_fifo_data_available) ? instr_id_i : back_id_q;
-    finished   = (write_q & terminate) | (~write_q & wlast_o & wready_i);
+    lsu_id_o   = (write_i &~ load_fifo_data_available & rlast_o) ? instr_id_i : back_id_q;
+    finished   = (write_q & terminate & rlast_o) |
+                 (~write_q && (counter_q == LastRow) && (row_counter_q == NumCols-1) && (cols_counter_q == NumCols-1) && wready_i && wlast_o);
   end
   
 
   always_comb begin: write_to_RF
     data_mask     = '1 << (8 * n_bytes_cols_i);  // SPEC says to load zeros outside of rows and cols
-
-    we_o          = load_fifo_data_available &~ mask_req;
+    we_o          = load_fifo_data_available &~ mask_req; 
     waddr_o       = waddr_q;
     wrowaddr_o    = counter_q       ;
-    wdata_o       = load_fifo_data & ~data_mask;
-    wlast_o       = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) && we_o && wready_i;  
-    // wlast_o       = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) & wready_i;
+    wdata_o       = load_fifo_data & ~data_mask; 
+    
   end
 
   always_comb begin: read_from_RF
     rdata_ready_o = write_i & store_fifo_space_available &~ load_fifo_data_available &~ mask_req;
     rrowaddr_o    = counter_q       ;
-    raddr_o       = operand_reg_i ;
-    rlast_o       = (counter_q == $clog2(N_ROWS)'(N_ROWS - 1)) && rdata_valid_i && rdata_ready_o;   
+    raddr_o[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR]   = operand_reg_i; 
+    if(quadrilatero_pkg::TILE_ADDR != 0) begin
+      raddr_o[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_q, cols_counter_q}; 
+    end
   end
 
   always_comb begin: lsu_ctrl_block
@@ -147,68 +158,197 @@ module quadrilatero_register_lsu #(
     store_fifo_push = rdata_ready_o && rdata_valid_i;
     lsu_ready = store_fifo_empty | (write_i &~ load_fifo_data_available &~ lsu_busy_q);
     start  = (start_i | start_q) & lsu_ready;
-    //busy_o = (write_i ? busy_d : busy) | start_q;
-    busy_o = (write_i ? busy_d : busy | (load_fifo_data_available & counter_d == '0)) | start_q;
+    busy_o = (write_i ? busy_d : busy) | start_q; 
     
     stride  = (start) ? stride_i  : stride_q;
     src_ptr = (start) ? address_i : src_ptr_q;
   end
 
   always_comb begin: next_value
-    if (rlast_o || wlast_o) begin
-      counter_d = '0;
-    end else if ((we_o && wready_i) || (rdata_valid_i && rdata_ready_o && !rlast_o)) begin
-      counter_d = counter_q + 1;
-    end else begin
-      counter_d = counter_q;
-    end
-
-    write_d = (write_i && rlast_o && rdata_valid_i) ? 1'b1 :
+    write_d = (write_i && (counter_q == LastRow) && rdata_valid_i) ? 1'b1 : 
               (!write_i && !busy)                   ? 1'b0 : write_q;
-
-    valid_d = (load_fifo_valid && counter_d==0 && ~valid_q) ? 1'b1 : 
-              (load_fifo_valid && counter_d==3 &&  valid_q) ? 1'b0 : valid_q;
-
+  
     start_d =  start              ? 1'b0 : 
               (start_q | start_i) ? 1'b1 : start_q;
 
     stride_d   = (start) ? stride_i  : stride_q ;
     src_ptr_d  = (start) ? address_i : src_ptr_q;
 
-    back_id_d = (load_fifo_valid && counter_d==0  && ~valid_q) ? instr_id_i    : 
-                  rlast_o                                       ? lsu_id_o      : back_id_q;
-
-    waddr_d   = (load_fifo_valid && counter_d==0) ? operand_reg_i : waddr_q  ;
-
-    busy_d = (write_i && rlast_o && rdata_valid_i) ? 1'b0 :
+    busy_d = (write_i && (counter_q == LastRow) && (row_counter_q == NumCols-1) && (cols_counter_q == NumCols-1) && rdata_valid_i && rlast_o) ? 1'b0 :
              (write_i && start_i)                  ? 1'b1 : busy_q;
   end
 
+  if(quadrilatero_pkg::TILE_ADDR != 0) begin
+    assign waddr_d[quadrilatero_pkg::TILE_ADDR-1:0] = {row_counter_d, cols_counter_d}; 
+  end
+
+  always_comb begin: fsm_block
+  lsu_state_d = lsu_state_q;
+  counter_d = counter_q;
+  cols_counter_d = cols_counter_q;
+  row_counter_d = row_counter_q;
+  rlast_o = rdata_ready_o? 1'b1 : 1'b0;
+  wlast_o = we_o? 1'b1 : 1'b0;
+  
+  back_id_d = back_id_q;
+  waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = waddr_q[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR];
+  
+
+  case (lsu_state_q)
+    LSU_IDLE: begin
+      back_id_d = instr_id_i; 
+      waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; 
+      row_counter_d = '0;
+      cols_counter_d = '0;
+      if(load_fifo_valid && !write_i && wready_i) begin 
+        if(cols_counter_q == NumCols - 1) begin
+          counter_d = counter_q + 1;
+          lsu_state_d = LSU_LOAD;
+
+        end else begin
+          cols_counter_d = cols_counter_q + 1;
+          lsu_state_d = LSU_LOAD;
+        end
+      end else if (write_i & store_fifo_space_available && rdata_valid_i) begin
+        if(cols_counter_q == NumCols - 1) begin
+          counter_d = counter_q + 1;
+          lsu_state_d = LSU_STORE;
+        end else begin
+          cols_counter_d = cols_counter_q + 1;
+          lsu_state_d = LSU_STORE;
+        end
+      end
+      
+    end
+    LSU_LOAD: begin 
+      if(load_fifo_valid) begin
+        if(wready_i) begin
+          if(counter_q == LastRow) begin
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
+              counter_d = '0;
+              if(row_counter_q == NumCols - 1) begin
+                row_counter_d = '0;
+                lsu_state_d = LSU_DONE;
+                back_id_d = instr_id_i;
+                waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; 
+              end else begin
+                row_counter_d = row_counter_q + 1;
+              end
+            end else begin
+              cols_counter_d = cols_counter_q + 1;
+            end
+          end else begin
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
+              counter_d = counter_q + 1;
+            end else begin
+              cols_counter_d = cols_counter_q + 1;
+            end
+          end
+        end
+
+      end else begin
+        if(write_i && wready_i) begin 
+          if(cols_counter_q == NumCols - 1) begin
+            counter_d = '0;
+            lsu_state_d = LSU_DONE;
+            cols_counter_d = '0;
+            back_id_d = instr_id_i;
+            waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; 
+          end else begin
+            cols_counter_d = cols_counter_q + 1;
+          end
+        end
+        
+      end
+    end
+    LSU_STORE: begin
+      if(store_fifo_space_available && write_i && rdata_valid_i) begin
+          if(counter_q == LastRow) begin
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
+              counter_d = '0;
+              if(row_counter_q == NumCols-1) begin
+                lsu_state_d = LSU_DONE;
+                back_id_d = instr_id_i;
+                waddr_d[$clog2(quadrilatero_pkg::N_IREGS)-1:quadrilatero_pkg::TILE_ADDR] = operand_reg_i; 
+              end else begin
+                row_counter_d = row_counter_q + 1;
+              end
+            end else begin
+              cols_counter_d = cols_counter_q + 1;
+            end    
+          end else begin
+            if(cols_counter_q == NumCols - 1) begin
+              cols_counter_d = '0;
+              counter_d = counter_q + 1;
+            end else begin
+              cols_counter_d = cols_counter_q + 1;
+            end
+          end
+      end 
+    end
+    LSU_DONE: begin
+      if(load_fifo_valid && !write_i && wready_i) begin
+        if(cols_counter_q == NumCols - 1) begin
+          cols_counter_d = '0;
+          row_counter_d = '0;
+          counter_d = counter_q + 1;
+          lsu_state_d = LSU_LOAD;
+        end else begin
+          cols_counter_d = cols_counter_q + 1;
+        end    
+      end else if (write_i && store_fifo_space_available && rdata_valid_i) begin
+        if(cols_counter_q == NumCols - 1) begin
+          counter_d = counter_q + 1;
+          lsu_state_d = LSU_STORE;
+          cols_counter_d = '0;
+          row_counter_d = '0;
+        end else begin
+          cols_counter_d = cols_counter_q + 1;
+        end
+      end else begin
+        lsu_state_d = LSU_IDLE;
+      end
+    end
+    default: begin
+      lsu_state_d = LSU_IDLE;
+    end
+  endcase
+    
+  end
+
+ 
   always_ff @(posedge clk_i or negedge rst_ni) begin: seq_block
     if (!rst_ni) begin
       counter_q <= '0;
       waddr_q   <= '0;
       back_id_q <= '0;
       start_q   <= '0;
-      valid_q   <= '0;
       write_q   <= '0;
       busy_q    <= '0;
+      lsu_state_q <= LSU_IDLE;
 
       lsu_busy_q <= '0;
       src_ptr_q  <= '0;
       stride_q   <= '0;
+      cols_counter_q <= '0;
+      row_counter_q <= '0;
     end else begin
       counter_q <= counter_d;
       back_id_q <= back_id_d;
       waddr_q   <= waddr_d  ; 
       start_q   <= start_d  ;
-      valid_q   <= valid_d  ;
       write_q   <= write_d  ;
       busy_q    <= busy_d   ;
+      lsu_state_q <= lsu_state_d;
 
       lsu_busy_q <= busy;
       src_ptr_q  <= src_ptr_d;
       stride_q   <= stride_d ;
+      cols_counter_q <= cols_counter_d;
+      row_counter_q <= row_counter_d;
     end
   end
 
@@ -232,7 +372,7 @@ module quadrilatero_register_lsu #(
 
       //Configuration
       .start_i                      (start                      ),
-      .write_i                                                   ,
+      .write_i                      (write_i), 
       .busy_o                       (busy                       ),
       .terminate_o                  (terminate                  ),
 
@@ -280,4 +420,7 @@ module quadrilatero_register_lsu #(
         "[quadrilatero_register_lsu] N_ROWS must be at least 2.\n"
     );
   end
+  if ((NumCols & (NumCols - 1)) != 0) begin
+      $error("RLEN / LLEN must be a power of 2.");
+    end
 endmodule

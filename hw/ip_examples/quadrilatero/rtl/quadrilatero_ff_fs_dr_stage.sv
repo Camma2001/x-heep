@@ -12,7 +12,7 @@ module quadrilatero_ff_fs_dr_stage #(
     parameter DATA_WIDTH = 32,
     parameter N_REGS = 8,
     localparam N_ROWS = MESH_WIDTH,
-    localparam RLEN = DATA_WIDTH * MESH_WIDTH
+    localparam ALEN = DATA_WIDTH * MESH_WIDTH
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -28,7 +28,7 @@ module quadrilatero_ff_fs_dr_stage #(
     // Data Read Register Port 
     output logic [$clog2(N_REGS)-1:0] data_raddr_o,
     output logic [$clog2(N_ROWS)-1:0] data_rrowaddr_o,
-    input logic [RLEN-1:0] data_rdata_i,
+    input logic [ALEN-1:0] data_rdata_i,
     input logic data_rdata_valid_i,
     output logic data_rdata_ready_o,
     output logic data_rlast_o,
@@ -36,7 +36,7 @@ module quadrilatero_ff_fs_dr_stage #(
     // Accumulator Read Register Port
     output logic [$clog2(N_REGS)-1:0] acc_raddr_o,
     output logic [$clog2(N_ROWS)-1:0] acc_rrowaddr_o,
-    input logic [RLEN-1:0] acc_rdata_i,
+    input logic [ALEN-1:0] acc_rdata_i,
     input logic acc_rdata_valid_i,
     output logic acc_rdata_ready_o,
     output logic acc_rlast_o,
@@ -44,7 +44,7 @@ module quadrilatero_ff_fs_dr_stage #(
     // Accumulator Out Write Register Port
     output logic [$clog2(N_REGS)-1:0] res_waddr_o,
     output logic [$clog2(N_ROWS)-1:0] res_wrowaddr_o,
-    output logic [          RLEN-1:0] res_wdata_o,
+    output logic [          ALEN-1:0] res_wdata_o,
     output logic                      res_we_o,
     output logic                      res_wlast_o,
     input  logic                      res_wready_i,
@@ -82,7 +82,7 @@ module quadrilatero_ff_fs_dr_stage #(
 
   logic [     $clog2(N_REGS)-1:0] n_res_waddr;
   logic [     $clog2(N_ROWS)-1:0] n_res_wrowaddr;
-  logic [               RLEN-1:0] n_res_wdata;
+  logic [               ALEN-1:0] n_res_wdata;
   logic                           n_res_we;
 
   logic [     $clog2(N_REGS)-1:0] data_reg_ff;  // data register

@@ -168,8 +168,8 @@ module quadrilatero_dispatcher #(
   
     delta = 3'b0;
     for(int ii = 0; ii < N_REGS; ii++) begin
-      delta += {2'b0, rw_queue_entry_o[ii].rvalid};
-      delta += {2'b0, rw_queue_entry_o[ii].wready};
+      delta += {2'b0, rvalid[ii]};
+      delta += {2'b0, wready[ii]};
     end
 
     done  = (delta == outstanding_op_q);
@@ -210,10 +210,9 @@ module quadrilatero_dispatcher #(
     rvalid[rreg_q[2]] |= reg3_valid &~ ld_reg3;
     wready[wreg_q   ] = regw_valid &~ ld_regw;
     for(int ii = 0; ii < N_REGS; ii++) begin
-      rw_queue_entry_o[ii].rvalid = rvalid[ii];
-      rw_queue_entry_o[ii].wready = wready[ii];
       rw_queue_entry_o[ii].id     = instr_id_q;
-      rw_queue_push_o [ii]        = rw_queue_entry_o[ii].rvalid | rw_queue_entry_o[ii].wready;
+      rw_queue_push_o [ii]        = rvalid[ii] | wready[ii];
+      rw_queue_entry_o[ii].valid  = rvalid[ii] | wready[ii];
     end
   end
 

@@ -9,34 +9,34 @@ module quadrilatero_regfile #(
     parameter WRITE_PORTS = 2,  // number of write ports 
     parameter N_REGS = 8,  // how many registers
     parameter RLEN = 128,  // length in bits for each register row
-    localparam N_ROWS = RLEN / 32  // this is done in the thead spec
+    localparam N_ROWS = quadrilatero_pkg::LEN / 32  // this is done in the thead spec
 ) (
     // clock and reset
     input logic clk_i,
     input logic rst_ni,
 
     // read port
-    input  logic [READ_PORTS-1:0][$clog2(N_REGS)-1:0] raddr_i,  // register and port address
+    input  logic [READ_PORTS-1:0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] raddr_i,  // register and port address
     input  logic [READ_PORTS-1:0][$clog2(N_ROWS)-1:0] rrowaddr_i,  // we can ask for a single row of a register
-    output logic [READ_PORTS-1:0][RLEN-1:0] rdata_o,  // row out
+    output logic [READ_PORTS-1:0][quadrilatero_pkg::LEN-1:0] rdata_o,  // row out
 
     // write port
-    input logic [WRITE_PORTS-1:0][$clog2(N_REGS)-1:0] waddr_i,
+    input logic [WRITE_PORTS-1:0][$clog2(quadrilatero_pkg::N_IREGS)-1:0] waddr_i,
     input logic [WRITE_PORTS-1:0][$clog2(N_ROWS)-1:0] wrowaddr_i,
-    input logic [WRITE_PORTS-1:0][          RLEN-1:0] wdata_i,
+    input logic [WRITE_PORTS-1:0][quadrilatero_pkg::LEN-1:0] wdata_i,
     input logic [WRITE_PORTS-1:0]                     we_i
 
 );
 
 `ifdef SIMULATION
   // Multiple of 2 and less than 2**16
-  if (!(RLEN < (1 << 16) && $countones(RLEN) == 1)) begin
+  if (!(quadrilatero_pkg::LEN < (1 << 16) && $countones(quadrilatero_pkg::LEN) == 1)) begin
     $fatal("invalid register configuration");
   end
 `endif
 
-  logic [N_REGS-1:0][N_ROWS-1:0][RLEN-1:0] mem_q;
-  logic [N_REGS-1:0][N_ROWS-1:0][RLEN-1:0] mem_d;
+  logic [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0][quadrilatero_pkg::LEN-1:0] mem_q;
+  logic [quadrilatero_pkg::N_IREGS-1:0][N_ROWS-1:0][quadrilatero_pkg::LEN-1:0] mem_d;
   
   always_comb begin : write_mem
     mem_d = mem_q;
